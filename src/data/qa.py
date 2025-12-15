@@ -58,17 +58,23 @@ class QADataset(Dataset):
         return item_dct
 
     def __getitem__(self, idx):
-        question = self.data[idx][self.question_key]
-        answer = self.data[idx][self.answer_key]
-        index = self.data[idx]["index"]
+        row = self.data[idx]
+        question = row[self.question_key]
+        answer = row[self.answer_key]
+        index = row["index"]
+        pop_sum = row.get("pop_sum", None)
         if isinstance(answer, str):
             item = self._process_sample(question=question, answer=answer, index=index)
+            if pop_sum is not None:
+                item["pop_sum"] = pop_sum
         elif isinstance(answer, list):
             item = {}
             for i, ans in enumerate(answer):
                 sample_item = self._process_sample(
                     question=question, answer=ans, index=index
                 )
+                if pop_sum is not None:
+                    sample_item["pop_sum"] = pop_sum
                 item[i] = sample_item
         else:
             raise NotImplementedError("answer format not found")

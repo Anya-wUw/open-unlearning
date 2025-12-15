@@ -1,7 +1,7 @@
 # @package _global_
 
 defaults:
-  - override /model: Llama-2-7b-hf
+  - override /model: Llama-3.2-1B-Instruct
   - override /eval: muse
 
 data_split: News
@@ -9,7 +9,7 @@ retain_logs_path: null
 
 model:
   model_args:
-    pretrained_model_name_or_path: muse-bench/MUSE-${data_split}_target
+    pretrained_model_name_or_path: Llama-3.2-1B-Instruct #muse-bench/MUSE-${data_split}_target
 
 eval:
   muse:

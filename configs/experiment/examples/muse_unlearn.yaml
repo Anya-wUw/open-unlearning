@@ -39,7 +39,7 @@ trainer:
     do_eval: true
     eval_on_start: true
     eval_strategy: epoch
-    num_train_epochs: 10
+    num_train_epochs: 5
     seed: 0
     lr_scheduler_type: constant
     remove_unused_columns: false

@@ -53,6 +53,16 @@ class DataCollatorForSupervisedDataset(object):
                 labels = [instance["labels"] for instance in instances]
                 labels = self._pad_tokens(labels, IGNORE_INDEX)
                 return_dct.update({"labels": labels})
+            # Optional auxiliary numeric fields (e.g., pop_sum) passed through if present
+            if "pop_sum" in instances[0]:
+                return_dct.update(
+                    {
+                        "pop_sum": torch.tensor(
+                            [float(example["pop_sum"]) for example in instances],
+                            dtype=torch.float32,
+                        )
+                    }
+                )
             if self.index:
                 if self.index in instances[0]:
                     return_dct.update(

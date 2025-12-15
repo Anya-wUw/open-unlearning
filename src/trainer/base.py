@@ -18,6 +18,11 @@ class FinetuneTrainer(Trainer):
         self.template_args = template_args
         super().__init__(*args, **kwargs)
 
+    def _move_model_to_device(self, model, device):
+        if getattr(model, "hf_device_map", None) is not None:
+            return model
+        return super()._move_model_to_device(model, device)
+
     def evaluate(
         self,
         eval_dataset: Optional[Union[Dataset, Dict[str, Dataset]]] = None,

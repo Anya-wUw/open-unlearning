@@ -23,6 +23,9 @@ forget_retain_splits=(
 per_device_train_batch_size=8
 gradient_accumulation_steps=4
 
+# Default number of unlearning epochs (override with NUM_EPOCHS)
+num_train_epochs=${NUM_EPOCHS:-5}
+
 
 lrs=(1e-5 2e-5 5e-5)
 betas=(0.05 0.1 0.5)
@@ -56,6 +59,7 @@ for split in "${forget_retain_splits[@]}"; do
                         retain_logs_path=saves/eval/tofu_${model}_${retain_split}/TOFU_EVAL.json \
                         trainer.args.per_device_train_batch_size=$per_device_train_batch_size \
                         trainer.args.gradient_accumulation_steps=$gradient_accumulation_steps \
+                        trainer.args.num_train_epochs=${num_train_epochs} \
                         trainer.args.eval_strategy=no \
                         trainer.args.eval_on_start=False \
                         trainer.args.num_train_epochs=2 \

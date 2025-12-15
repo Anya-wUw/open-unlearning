@@ -6,7 +6,8 @@ class UNDIAL(GradDiff):
     def __init__(self, beta=1.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.beta = beta
-        if self.ref_model is None:
+        self.uses_lora = hasattr(self.model, "disable_adapter")
+        if self.ref_model is None and not self.uses_lora:
             self.ref_model = self._prepare_ref_model(self.model)
 
     def compute_loss(self, model, inputs, return_outputs=False):

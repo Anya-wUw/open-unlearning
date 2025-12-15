@@ -152,6 +152,16 @@ python src/train.py --config-name=unlearn.yaml experiment=unlearn/tofu/default \
 - `forget_split/retain_split`- Sets the forget and retain dataset splits.
 - `trainer`- Load [`configs/trainer/GradAscent.yaml`](configs/trainer/GradAscent.yaml) and override the unlearning method with the handler (see config) implemented in [`src/trainer/unlearn/grad_ascent.py`](src/trainer/unlearn/grad_ascent.py).
 
+LoRA adapters can be trained with UNDIAL via the LoRA-specific experiment:
+
+```bash
+python src/train.py --config-name=unlearn.yaml \
+  experiment=unlearn/muse/undial_lora.yaml trainer=UNDIAL \
+  model=Llama-3.2-1B-Instruct task_name=muse_undial_lora_run
+```
+
+This loads the [`Llama-3.2-1B-Instruct-lora`](configs/model/Llama-3.2-1B-Instruct-lora.yaml) adapters and the LoRA-tuned training arguments defined in [`configs/experiment/unlearn/muse/undial_lora.yaml`](configs/experiment/unlearn/muse/undial_lora.yaml).
+
 ### 📊 Perform an Evaluation
 
 An example command for launching a TOFU evaluation process on `forget10` split:

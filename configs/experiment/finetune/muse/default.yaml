@@ -1,7 +1,7 @@
 # @package _global_
 
 defaults:
-  - override /model: Llama-2-13b-hf
+  - override /model: Llama-3.2-1B-Instruct
   - override /trainer: finetune
   - override /data/datasets@data.train: MUSE_train
   - override /eval: muse

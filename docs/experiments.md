@@ -39,6 +39,11 @@ python src/train.py --config-name=train.yaml experiment=finetune/tofu/default ta
 # output directory will be constructed as: saves/unlearn/SAMPLE_UNLEARN
 python src/train.py --config-name=unlearn.yaml experiment=unlearn/tofu/default task_name=SAMPLE_TRAIN
 
+## runs UNDIAL with LoRA adapters configured in configs/experiment/unlearn/muse/undial_lora.yaml
+python src/train.py --config-name=unlearn.yaml \
+  experiment=unlearn/muse/undial_lora.yaml trainer=UNDIAL \
+  model=Llama-3.2-1B-Instruct task_name=muse_undial_lora_demo
+
 
 ## runs an evaluation using experiment details from configs/eval/muse/default.yaml
 python src/eval.py --config-name=eval.yaml experiment=eval/muse/default task_name=SAMPLE_EVAL

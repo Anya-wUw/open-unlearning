@@ -34,6 +34,10 @@ class PDU(GradDiff):
                 DualOptimizationCallback(self, dual_update_upon, dual_warmup_epochs)
             )
 
+        # Sparse logging state
+        self._last_log_step = -1
+        self._last_pref_value = None
+
     def enable_updates(self):
         self.can_update = True
 
@@ -61,13 +65,30 @@ class PDU(GradDiff):
                 0, self.preferences[1] + self.dual_step_size * retain_loss.item()
             )
 
-        # Log individual losses and the retain preference
-        log_dictionary = {}
-        for i in range(len(losses)):
-            log_dictionary[self.loss_names[i]] = losses[i].item()
-        if self.primal_dual:
-            log_dictionary["retain_preference"] = self.preferences[1]
-        self.log(log_dictionary)
+        # Throttle logging heavily: log only occasionally or on significant λ change
+        try:
+            step = int(getattr(self.state, "global_step", 0))
+            base = max(1, int(getattr(self.args, "logging_steps", 50)))
+            interval = base * 10  # 10x less frequent than HF default logging
+        except Exception:
+            step, interval = 0, 500
+
+        # Significant change threshold for lambda
+        lambda_now = float(self.preferences[1]) if self.primal_dual else None
+        lambda_delta = (
+            abs(lambda_now - self._last_pref_value) if (self._last_pref_value is not None and lambda_now is not None) else None
+        )
+        significant_change = lambda_delta is not None and lambda_delta >= 0.05
+
+        if (step == 0) or (step - self._last_log_step >= interval) or significant_change:
+            log_dictionary = {}
+            if self.primal_dual:
+                log_dictionary["retain_preference"] = lambda_now
+                self._last_pref_value = lambda_now
+            # Only log retain_preference to reduce noise
+            if log_dictionary:
+                self.log(log_dictionary)
+            self._last_log_step = step
 
         return loss
 

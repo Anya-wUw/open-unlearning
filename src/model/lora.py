@@ -1,5 +1,5 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import LoraConfig, get_peft_model, TaskType
+from peft import LoraConfig, get_peft_model, TaskType, PeftModel
 from omegaconf import DictConfig, open_dict, ListConfig
 from typing import Optional
 import torch
@@ -125,7 +125,7 @@ class LoRAModelForCausalLM:
         logger.info(f"Applying LoRA with config: {peft_config}")
         model = get_peft_model(base_model, peft_config)
 
-        # Print trainable parameters
+        # Print trainable parameters (only meaningful for freshly injected adapters)
         model.print_trainable_parameters()
 
         return model
@@ -154,22 +154,52 @@ def get_lora_model(model_cfg: DictConfig):
 
     with open_dict(model_args):
         model_path = model_args.pop("pretrained_model_name_or_path", None)
+        device_map = model_args.pop("device_map", None)
+
+    is_adapter = (
+        model_path
+        and os.path.isdir(model_path)
+        and os.path.exists(os.path.join(model_path, "adapter_config.json"))
+    )
 
     try:
-        # Load model with LoRA
-        model = LoRAModelForCausalLM.from_pretrained(
-            pretrained_model_name_or_path=model_path,
-            lora_config=lora_config,
-            torch_dtype=torch_dtype,
-            device_map="auto",
-            cache_dir=hf_home,
-            **model_args,
-        )
+        kwargs = dict(model_args)
+        base_model_path = kwargs.pop("base_model_name_or_path", None)
+        if device_map is not None:
+            kwargs.setdefault("device_map", device_map)
+        kwargs.setdefault("low_cpu_mem_usage", True)
+        kwargs.setdefault("cache_dir", hf_home)
+
+        if is_adapter:
+            adapter_path = model_path
+            if base_model_path is None:
+                raise ValueError(
+                    "When loading a saved LoRA adapter pass `model.model_args.base_model_name_or_path`."
+                )
+            logger.info(
+                f"Loading base model {base_model_path} with adapter from {adapter_path}"
+            )
+            base_model = AutoModelForCausalLM.from_pretrained(
+                pretrained_model_name_or_path=base_model_path,
+                torch_dtype=torch_dtype,
+                **kwargs,
+            )
+            model = PeftModel.from_pretrained(base_model, adapter_path)
+        else:
+            model = LoRAModelForCausalLM.from_pretrained(
+                pretrained_model_name_or_path=model_path,
+                lora_config=lora_config,
+                torch_dtype=torch_dtype,
+                **kwargs,
+            )
     except Exception as e:
         logger.warning(f"Model {model_path} requested with {model_cfg.model_args}")
         raise ValueError(
             f"Error {e} while fetching LoRA model using LoRAModelForCausalLM.from_pretrained()."
         )
+
+    if hasattr(model, "print_trainable_parameters") and not is_adapter:
+        model.print_trainable_parameters()
 
     # Load tokenizer using the same logic as the main module
     tokenizer = get_tokenizer(tokenizer_args)
