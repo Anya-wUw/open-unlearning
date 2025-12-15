@@ -3,3 +3,5 @@ top_p: null
 temperature: null
 max_new_tokens: 200
 use_cache: True
+repetition_penalty: null
+no_repeat_ngram_size: null

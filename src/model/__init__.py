@@ -61,7 +61,6 @@ def get_model(model_cfg: DictConfig):
         model = model_cls.from_pretrained(
             pretrained_model_name_or_path=model_path,
             torch_dtype=torch_dtype,
-            device_map="auto",
             **model_args,
             cache_dir=hf_home,
         )

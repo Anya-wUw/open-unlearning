@@ -106,7 +106,7 @@ else
 fi
 
 # Build the command
-CMD="python src/train.py --config-name=${TRAIN_CONFIG} @experiment=${EXPERIMENT_TYPE}/${DATASET}/lora model=${MODEL}"
+CMD="python src/train.py --config-name=${TRAIN_CONFIG} experiment=${EXPERIMENT_TYPE}/${DATASET}/lora model=${MODEL}"
 
 echo "Running command:"
 echo "  $CMD"

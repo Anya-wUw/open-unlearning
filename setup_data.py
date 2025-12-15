@@ -10,6 +10,8 @@ def download_eval_data():
         allow_patterns="*.json",
         repo_type="dataset",
         local_dir="saves/eval",
+        force_download=True,
+        resume_download=False,
     )
 
 

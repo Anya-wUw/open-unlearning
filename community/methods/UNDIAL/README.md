@@ -10,7 +10,7 @@
 - Other Details: The original paper does not use the retain set and aims to retain knowledge in all domains, not just on the retain set. So alpha is set to 0. Practionioners could search over the alpha or gamma to better retain the performance on the retain set.
 
 # Results
-Run `run.sh` script.
+Run `run.sh` for full-parameter UNDIAL, `run_lora.sh` for MUSE LoRA adapters, or `run_duet_lora.sh` for the SwetieePawsss/DUET benchmark. The LoRA scripts expose the adapter rank (`lora_rs`), alpha (`lora_alphas`), and dropout (`lora_dropouts`) arrays so you can sweep alternative configurations. They default to the public `meta-llama/Llama-3.1-8B-Instruct` checkpoint; flip the `use_sft_base` toggle near the top of the script to run against the locally finetuned model at `/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/llama3.1-8b_full_3ep_ft_tripunlamb`. Outputs land under `saves/unlearn/<TASK_NAME>`.
 
 # Citation
 @misc{dong2024undial,
