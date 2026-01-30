@@ -14,7 +14,20 @@ def seed_everything(seed=42):
     torch.backends.cudnn.benchmark = False
 
 
+def _filter_model_inputs(inputs):
+    allowed_keys = {
+        "input_ids",
+        "attention_mask",
+        "labels",
+        "position_ids",
+        "token_type_ids",
+        "inputs_embeds",
+    }
+    return {k: v for k, v in inputs.items() if k in allowed_keys}
+
+
 def compute_kl_divergence(model, target_model, inputs):
+    inputs = _filter_model_inputs(inputs)
     with torch.no_grad():
         ref_outputs = target_model(**inputs)
 
@@ -35,6 +48,7 @@ def compute_kl_divergence(model, target_model, inputs):
 def compute_batch_nll(model, inputs):
     # get the sum loss for each sequence in a batch
     # NOTE: not same as model(**inputs).loss but has sum loss for each seq in a batch
+    inputs = _filter_model_inputs(inputs)
     outputs = model(**inputs)
     logits = outputs.logits
     labels = inputs["labels"]
@@ -193,6 +207,7 @@ def compute_wga_loss_dynamic_beta(
     inputs,
     beta_from_pop_sum: bool = True,
     rep_coeff: float = 0.0,
+    beta_const: float | None = None,
 ):
     """Compute WGA loss with per-sample dynamic beta and optional anti-repetition penalty.
 
@@ -219,7 +234,9 @@ def compute_wga_loss_dynamic_beta(
     lm_loss = lm_loss.view(B, T)
 
     # Build beta per sample
-    if beta_from_pop_sum and ("pop_sum" in inputs):
+    if beta_const is not None:
+        beta_vec = torch.full((B,), float(beta_const), device=shift_logits.device, dtype=shift_logits.dtype)
+    elif beta_from_pop_sum and ("pop_sum" in inputs):
         pop_sum = inputs["pop_sum"].to(shift_logits.device).float().view(B)
         beta_vec = beta_from_pop_sum_tensor(pop_sum)
     else:

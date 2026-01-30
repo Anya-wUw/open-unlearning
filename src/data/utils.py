@@ -1,3 +1,4 @@
+import os
 import torch
 import datasets
 import numpy as np
@@ -10,8 +11,33 @@ logger = logging.getLogger("data")
 
 
 def load_hf_dataset(path, **kwargs):
-    dataset = datasets.load_dataset(path, **kwargs)
-    return dataset
+    """Wrapper around datasets.load_dataset with sane download defaults.
+
+    - Increases HTTP timeout and retries to mitigate transient hub timeouts.
+    - Resumes partial downloads when possible.
+    - Respects standard cache envs; allows overriding cache via HF_DATASETS_CACHE.
+    """
+    timeout_sec = int(os.environ.get("HF_TIMEOUT", "60"))
+    max_retries = int(os.environ.get("HF_MAX_RETRIES", "5"))
+    # Build DownloadConfig only if caller didn't pass one
+    if "download_config" not in kwargs:
+        try:
+            dl_cfg = datasets.DownloadConfig(
+                max_retries=max_retries,
+                retry_interval=1.0,
+                resume_download=True,
+                use_etag=True,
+                timeout=timeout_sec,
+            )
+            kwargs["download_config"] = dl_cfg
+        except Exception:
+            pass
+    # Default cache_dir from env if not provided
+    if "cache_dir" not in kwargs:
+        cache_dir = os.environ.get("HF_DATASETS_CACHE") or os.environ.get("HF_CACHE")
+        if cache_dir:
+            kwargs["cache_dir"] = cache_dir
+    return datasets.load_dataset(path, **kwargs)
 
 
 def preprocess_chat_instance(
