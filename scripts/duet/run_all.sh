@@ -13,11 +13,22 @@ bash "${script_dir}/ga_duet.sh"
 echo "[duet] Running GD"
 bash "${script_dir}/gd_duet.sh"
 
-echo "[duet] Running WGA"
-bash "${script_dir}/wga_duet.sh"
 
 echo "[duet] Running NPO"
 bash "${script_dir}/npo_duet.sh"
 
-echo "[duet] Running AdaWGD"
-bash "${script_dir}/ada_wgd_duet.sh"
+
+# echo "[duet] Running GA"
+# bash "${script_dir}/ga_duet.sh"
+
+# echo "[duet] Running GD"
+# bash "${script_dir}/gd_duet.sh"
+
+# echo "[duet] Running WGA"
+# bash "${script_dir}/wga_duet.sh"
+
+# echo "[duet] Running NPO"
+# bash "${script_dir}/npo_duet.sh"
+
+# echo "[duet] Running AdaWGD"
+# bash "${script_dir}/ada_wgd_duet.sh"

@@ -17,16 +17,16 @@ local_sft_base="${LOCAL_SFT_BASE:-/mnt/extremessd10tb/borisiuk/open-unlearning/s
 use_sft_base=${USE_SFT_BASE:-1}
 if [[ "${use_sft_base}" == "1" ]]; then
     base_model_path="${local_sft_base}"
-    echo "[duet][ada_WGD] Using locally finetuned base checkpoint at ${base_model_path}"
+    echo "[duet][ada_pop] Using locally finetuned base checkpoint at ${base_model_path}"
 else
     base_model_path="${hf_base_model_path}"
-    echo "[duet][ada_WGD] Using Hugging Face base checkpoint ${base_model_path}"
+    echo "[duet][ada_pop] Using Hugging Face base checkpoint ${base_model_path}"
 fi
 
 experiment="unlearn/duet/wga_lora.yaml"
-trainer="AdaWGD"
+trainer="AdaPop"
 
-output_root="${repo_root}/saves/unlearn/duet/ada_WGD"
+output_root="${repo_root}/saves/unlearn/duet/ada_pop"
 mkdir -p "${output_root}"
 
 set_forget_retain_splits
@@ -94,20 +94,20 @@ for split in "${forget_retain_splits[@]}"; do
                         for lora_alpha in "${lora_alphas[@]}"; do
                             for lora_dropout in "${lora_dropouts[@]}"; do
                                 dropout_tag=${lora_dropout//./p}
-                                task_name=duet_${base_model}_${forget_label}_ada_WGD_lora_r${lora_r}_lalpha${lora_alpha}_ldrop${dropout_tag}_lr${lr}_${atag}_${btag}_gamma${gamma_tag}
+                                task_name=duet_${base_model}_${forget_label}_ada_pop_lora_r${lora_r}_lalpha${lora_alpha}_ldrop${dropout_tag}_lr${lr}_${atag}_${btag}_gamma${gamma_tag}
                                 run_dir=${output_root}/${task_name}
                                 eval_dir=${run_dir}/evals
                                 summary_path=${eval_dir}/DUET_SUMMARY.json
 
                                 if [[ -f "${summary_path}" && "${FORCE_RERUN:-0}" != "1" ]]; then
-                                    echo "[duet][ada_WGD] Skipping ${task_name}: found existing summary at ${summary_path}"
+                                    echo "[duet][ada_pop] Skipping ${task_name}: found existing summary at ${summary_path}"
                                     continue
                                 fi
 
-                                echo "${task_name}: AdaWGD LoRA unlearning ${base_model_path} on ${forget_split}"
+                                echo "${task_name}: AdaPop LoRA unlearning ${base_model_path} on ${forget_split}"
 
                                 adapter_path=${run_dir}/adapter_model.safetensors
-                                log_file=${run_dir}/AdaWGD.log
+                                log_file=${run_dir}/AdaPop.log
                                 if [[ ! -f "${adapter_path}" || "${FORCE_RERUN:-0}" == "1" ]]; then
                                     mkdir -p "${run_dir}"
                                     echo "[TRAIN] $(date) task=${task_name}" | tee -a "${log_file}"

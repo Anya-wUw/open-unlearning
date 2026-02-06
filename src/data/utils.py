@@ -77,8 +77,16 @@ def preprocess_chat_instance(
     if template_config["apply_chat_template"]:
         chat = []
         system_prompt = template_config.get("system_prompt", None)
+        system_role = template_config.get("system_prompt_role", "system")
         if system_prompt:
-            chat += [{"role": "system", "content": system_prompt}]
+            if system_role == "user" and prompt_msgs:
+                # For templates that require strict user/assistant alternation, fold
+                # the system prompt into the first user message instead of adding a
+                # separate system/user role.
+                prompt_msgs = list(prompt_msgs)
+                prompt_msgs[0] = f"{system_prompt}\n\n{prompt_msgs[0]}"
+            else:
+                chat += [{"role": system_role, "content": system_prompt}]
         for prompt, response in zip(prompt_msgs, response_msgs):
             chat += [{"role": "user", "content": prompt}]
             chat += [{"role": "assistant", "content": response}]

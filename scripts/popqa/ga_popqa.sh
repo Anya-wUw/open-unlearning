@@ -8,10 +8,10 @@ repo_root=$(realpath "${script_dir}/../..")
 export MASTER_PORT=$(python -c "import socket; s=socket.socket(); s.bind(('', 0)); print(s.getsockname()[1]); s.close()")
 echo "Master Port: $MASTER_PORT"
 
-base_model="Llama-3.1-8B-Instruct"
-lora_model="${base_model}-lora"
-hf_base_model_path="meta-llama/${base_model}"
-local_sft_base="/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/popqa/llama3.1-8b_full_5ep_ft_popqa"
+base_model="${BASE_MODEL:-Llama-3.1-8B-Instruct}"
+lora_model="${MODEL_CONFIG:-${base_model}-lora}"
+hf_base_model_path="${HF_BASE_MODEL_PATH:-meta-llama/${base_model}}"
+local_sft_base="${LOCAL_SFT_BASE:-/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/popqa/llama3.1-8b_full_5ep_ft_popqa}"
 
 use_sft_base=${USE_SFT_BASE:-1}
 if [[ "${use_sft_base}" == "1" ]]; then

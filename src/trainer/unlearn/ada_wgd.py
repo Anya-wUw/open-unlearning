@@ -1,4 +1,5 @@
 import math
+import logging
 from typing import Dict, Any, Optional
 
 import torch
@@ -116,6 +117,7 @@ class AdaWGD(GradDiff):
             self.add_callback(AdaWGDCallback(self))
         except Exception:
             pass
+        self._logger = logging.getLogger(__name__)
 
     # ------------------------ Core Training Loss ------------------------
     def _current_epoch(self) -> float:
@@ -199,9 +201,10 @@ class AdaWGD(GradDiff):
             self._last_logged_step = getattr(self, "_last_logged_step", 0)
             if self.step_log_interval > 0 and (self._step_count - self._last_logged_step) >= self.step_log_interval:
                 self._last_logged_step = self._step_count
-                self.log({
+                step_payload = {
                     "ada_step_forget_loss": float(forget_loss.detach().item()),
                     "ada_step_retain_loss": float(retain_loss.detach().item()),
+                    "ada_step_total_loss": float(loss.detach().item()),
                     "ada_step_alpha_k": float(self.alpha_k),
                     "ada_step_alpha_eff": float(alpha_eff),
                     "ada_step_gamma_k": float(self.gamma_k),
@@ -209,7 +212,31 @@ class AdaWGD(GradDiff):
                     "ada_step_beta_mean_ema": float(self._beta_mean_ema) if getattr(self, "_beta_mean_ema", None) is not None else 0.0,
                     "ada_step_ret_ema": float(self._retain_ema) if getattr(self, "_retain_ema", None) is not None else 0.0,
                     "ada_step_forget_strength_ema": float(self._forget_strength_ema) if getattr(self, "_forget_strength_ema", None) is not None else 0.0,
-                })
+                }
+                self.log(step_payload)
+                # Extra stdout log so AdaWGD.log captures step-wise summaries.
+                self._logger.info(
+                    "[AdaWGD][step %s] total=%.4f forget=%.4f retain=%.4f alpha=%.4f alpha_eff=%.4f gamma=%.4f beta_mean=%.4f beta_ema=%.4f",
+                    self._step_count,
+                    step_payload["ada_step_total_loss"],
+                    step_payload["ada_step_forget_loss"],
+                    step_payload["ada_step_retain_loss"],
+                    step_payload["ada_step_alpha_k"],
+                    step_payload["ada_step_alpha_eff"],
+                    step_payload["ada_step_gamma_k"],
+                    step_payload["ada_step_beta_mean"],
+                    step_payload["ada_step_beta_mean_ema"],
+                )
+                try:
+                    self.accelerator.print(
+                        f"[AdaWGD][step {self._step_count}] total={step_payload['ada_step_total_loss']:.4f} "
+                        f"forget={step_payload['ada_step_forget_loss']:.4f} retain={step_payload['ada_step_retain_loss']:.4f} "
+                        f"alpha={step_payload['ada_step_alpha_k']:.4f} alpha_eff={step_payload['ada_step_alpha_eff']:.4f} "
+                        f"gamma={step_payload['ada_step_gamma_k']:.4f} beta_mean={step_payload['ada_step_beta_mean']:.4f} "
+                        f"beta_ema={step_payload['ada_step_beta_mean_ema']:.4f}"
+                    )
+                except Exception:
+                    pass
         except Exception:
             pass
         # Update online EMAs
@@ -252,6 +279,25 @@ class AdaWGD(GradDiff):
                 "ada_dF": float(0.0),
                 "ada_alpha_delta": float(0.0),
             })
+            self._logger.info(
+                "[AdaWGD][epoch end] alpha=%.4f lambda=%.4f gamma=%.4f delta=%.4f ret_ema=%.4f ret_ref=%.4f beta_ema=%.4f",
+                float(self.alpha_k),
+                float(self.lambda_k),
+                float(self.gamma_k),
+                float(delta_rel),
+                float(Rk),
+                float(self._ret_baseline or 0.0),
+                float(self._beta_mean_ema) if self._beta_mean_ema is not None else 0.0,
+            )
+            try:
+                self.accelerator.print(
+                    f"[AdaWGD][epoch end] alpha={float(self.alpha_k):.4f} lambda={float(self.lambda_k):.4f} "
+                    f"gamma={float(self.gamma_k):.4f} delta={float(delta_rel):.4f} ret_ema={float(Rk):.4f} "
+                    f"ret_ref={float(self._ret_baseline or 0.0):.4f} "
+                    f"beta_ema={float(self._beta_mean_ema) if self._beta_mean_ema is not None else 0.0:.4f}"
+                )
+            except Exception:
+                pass
             return
 
         # Establish baseline retain reference lazily on first epoch end
@@ -327,6 +373,28 @@ class AdaWGD(GradDiff):
                 "ada_alpha_eff_last": float(getattr(self, "_last_alpha_eff", self.alpha_k)),
             }
         )
+        # Epoch-end stdout log for AdaWGD.log
+        self._logger.info(
+            "[AdaWGD][epoch end] alpha=%.4f lambda=%.4f gamma=%.4f delta=%.4f dF=%.4f ret_ema=%.4f ret_ref=%.4f beta_ema=%.4f",
+            float(self.alpha_k),
+            float(self.lambda_k),
+            float(self.gamma_k),
+            float(delta_rel),
+            float(dF),
+            float(Rk) if Rk is not None else 0.0,
+            float(self._ret_baseline) if self._ret_baseline is not None else 0.0,
+            float(self._beta_mean_ema) if self._beta_mean_ema is not None else 0.0,
+        )
+        try:
+            self.accelerator.print(
+                f"[AdaWGD][epoch end] alpha={float(self.alpha_k):.4f} lambda={float(self.lambda_k):.4f} "
+                f"gamma={float(self.gamma_k):.4f} delta={float(delta_rel):.4f} dF={float(dF):.4f} "
+                f"ret_ema={float(Rk) if Rk is not None else 0.0:.4f} "
+                f"ret_ref={float(self._ret_baseline) if self._ret_baseline is not None else 0.0:.4f} "
+                f"beta_ema={float(self._beta_mean_ema) if self._beta_mean_ema is not None else 0.0:.4f}"
+            )
+        except Exception:
+            pass
 
     # Hook into epoch end via callback-like method
     def _maybe_post_epoch(self):

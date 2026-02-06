@@ -4,14 +4,15 @@ set -euo pipefail
 
 script_dir=$(dirname "$(realpath "$0")")
 repo_root=$(realpath "${script_dir}/../..")
+source "${script_dir}/_splits.sh"
 
 export MASTER_PORT=$(python -c "import socket; s=socket.socket(); s.bind(('', 0)); print(s.getsockname()[1]); s.close()")
 echo "Master Port: $MASTER_PORT"
 
-base_model="Llama-3.1-8B-Instruct"
-lora_model="${base_model}-lora"
-hf_base_model_path="meta-llama/${base_model}"
-local_sft_base="/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/llama3.1-8b_full_3ep_ft_tripunlamb"
+base_model="${BASE_MODEL:-Llama-3.1-8B-Instruct}"
+lora_model="${MODEL_CONFIG:-${base_model}-lora}"
+hf_base_model_path="${HF_BASE_MODEL_PATH:-meta-llama/${base_model}}"
+local_sft_base="${LOCAL_SFT_BASE:-/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/llama3.1-8b_full_3ep_ft_tripunlamb}"
 
 use_sft_base=${USE_SFT_BASE:-1}
 if [[ "${use_sft_base}" == "1" ]]; then
@@ -28,10 +29,7 @@ trainer="GradDiff"
 output_root="${repo_root}/saves/unlearn/duet/gd"
 mkdir -p "${output_root}"
 
-forget_retain_splits=(
-    "city_forget_rare_5 city_fast_retain_500"
-    "city_forget_popular_5 city_fast_retain_500"
-)
+set_forget_retain_splits
 
 per_device_train_batch_size=${PER_DEVICE_TRAIN_BS:-1}
 gradient_accumulation_steps=${GRAD_ACCUM:-32}
@@ -62,8 +60,10 @@ lora_dropouts=(${LORA_DROPOUTS:-"0.0"})
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 
 for split in "${forget_retain_splits[@]}"; do
-    forget_split=$(echo "$split" | cut -d' ' -f1)
-    retain_split=$(echo "$split" | cut -d' ' -f2)
+    read -r forget_split retain_split forget_label <<< "${split}"
+    if [[ -z "${forget_label:-}" ]]; then
+        forget_label="${forget_split}"
+    fi
 
     for lr in "${lrs[@]}"; do
         for alpha in "${alphas[@]}"; do
@@ -74,7 +74,7 @@ for split in "${forget_retain_splits[@]}"; do
                     for lora_alpha in "${lora_alphas[@]}"; do
                         for lora_dropout in "${lora_dropouts[@]}"; do
                             dropout_tag=${lora_dropout//./p}
-                            task_name=duet_${base_model}_${forget_split}_gd_lora_r${lora_r}_lalpha${lora_alpha}_ldrop${dropout_tag}_lr${lr}_alpha${alpha_tag}_gamma${gamma_tag}
+                            task_name=duet_${base_model}_${forget_label}_gd_lora_r${lora_r}_lalpha${lora_alpha}_ldrop${dropout_tag}_lr${lr}_alpha${alpha_tag}_gamma${gamma_tag}
                             run_dir=${output_root}/${task_name}
                             eval_dir=${run_dir}/evals
                             summary_path=${eval_dir}/DUET_SUMMARY.json

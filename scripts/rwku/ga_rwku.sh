@@ -8,9 +8,9 @@ repo_root=$(realpath "${script_dir}/../..")
 export MASTER_PORT=$(python -c "import socket; s=socket.socket(); s.bind(('', 0)); print(s.getsockname()[1]); s.close()")
 echo "Master Port: $MASTER_PORT"
 
-base_model="Llama-3.1-8B"
-lora_model="${base_model}-lora"
-base_model_path="meta-llama/${base_model}"
+base_model="${BASE_MODEL:-Llama-3.1-8B}"
+lora_model="${MODEL_CONFIG:-${base_model}-lora}"
+base_model_path="${HF_BASE_MODEL_PATH:-meta-llama/${base_model}}"
 
 echo "[rwku][GA] Using Hugging Face base checkpoint ${base_model_path}"
 

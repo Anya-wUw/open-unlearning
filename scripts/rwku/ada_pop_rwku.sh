@@ -12,12 +12,12 @@ base_model="${BASE_MODEL:-Llama-3.1-8B}"
 lora_model="${MODEL_CONFIG:-${base_model}-lora}"
 base_model_path="${HF_BASE_MODEL_PATH:-meta-llama/${base_model}}"
 
-echo "[rwku][NPO] Using Hugging Face base checkpoint ${base_model_path}"
+echo "[rwku][ada_pop] Using Hugging Face base checkpoint ${base_model_path}"
 
-experiment="unlearn/rwku/npo_lora.yaml"
-trainer="NPO"
+experiment="unlearn/rwku/wga_lora.yaml"
+trainer="AdaPop"
 
-output_root="${repo_root}/saves/unlearn/rwku/npo"
+output_root="${repo_root}/saves/unlearn/rwku/ada_pop"
 mkdir -p "${output_root}"
 
 forget_split="forget_level2"
@@ -27,23 +27,11 @@ per_device_train_batch_size=${PER_DEVICE_TRAIN_BS:-1}
 gradient_accumulation_steps=${GRAD_ACCUM:-32}
 num_train_epochs=${NUM_EPOCHS:-5}
 
-raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4}"
+raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4 1e-3}"
 raw_lrs="${raw_lrs//,/ }"
 raw_lrs="${raw_lrs//\"/}"
 raw_lrs="${raw_lrs//\'/}"
 read -r -a lrs <<< "${raw_lrs}"
-
-raw_betas="${BETAS:-0.5}"
-raw_betas="${raw_betas//,/ }"
-raw_betas="${raw_betas//\"/}"
-raw_betas="${raw_betas//\'/}"
-read -r -a betas <<< "${raw_betas}"
-
-raw_alphas="${ALPHAS:-1.0}"
-raw_alphas="${raw_alphas//,/ }"
-raw_alphas="${raw_alphas//\"/}"
-raw_alphas="${raw_alphas//\'/}"
-read -r -a alphas <<< "${raw_alphas}"
 
 raw_gammas="${GAMMAS:-1.0}"
 raw_gammas="${raw_gammas//,/ }"
@@ -55,34 +43,60 @@ lora_rs=(${LORA_RS:-"32"})
 lora_alphas=(${LORA_ALPHAS:-"64"})
 lora_dropouts=(${LORA_DROPOUTS:-"0.0"})
 
+raw_alpha_consts="${ALPHA_CONST:-none}"
+raw_alpha_consts="${raw_alpha_consts//,/ }"
+raw_alpha_consts="${raw_alpha_consts//\"/}"
+raw_alpha_consts="${raw_alpha_consts//\'/}"
+read -r -a alpha_consts <<< "${raw_alpha_consts}"
+
+raw_beta_consts="${BETA_CONST:-none}"
+raw_beta_consts="${raw_beta_consts//,/ }"
+raw_beta_consts="${raw_beta_consts//\"/}"
+raw_beta_consts="${raw_beta_consts//\'/}"
+read -r -a beta_consts <<< "${raw_beta_consts}"
+
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 
 for lr in "${lrs[@]}"; do
-    for beta in "${betas[@]}"; do
-        beta_tag=${beta//./p}
-        for alpha in "${alphas[@]}"; do
-            alpha_tag=${alpha//./p}
-            for gamma in "${gammas[@]}"; do
-                gamma_tag=${gamma//./p}
+    for gamma in "${gammas[@]}"; do
+        gamma_tag=${gamma//./p}
+        for alpha_const in "${alpha_consts[@]}"; do
+            for beta_const in "${beta_consts[@]}"; do
+                atag="adyn"
+                btag="bdyn"
+                extra_method_args=()
+                shopt -s nocasematch || true
+                if [[ "${alpha_const}" != "none" && -n "${alpha_const}" ]]; then
+                    atag="a${alpha_const//./p}"
+                    extra_method_args+=(trainer.method_args.alpha_const=${alpha_const})
+                fi
+                if [[ "${beta_const}" != "none" && -n "${beta_const}" ]]; then
+                    btag="b${beta_const//./p}"
+                    extra_method_args+=(trainer.method_args.beta_const=${beta_const})
+                fi
+                shopt -u nocasematch || true
+
                 for lora_r in "${lora_rs[@]}"; do
                     for lora_alpha in "${lora_alphas[@]}"; do
                         for lora_dropout in "${lora_dropouts[@]}"; do
                             dropout_tag=${lora_dropout//./p}
-                            task_name=rwku_${base_model}_${forget_split}_npo_lora_r${lora_r}_lalpha${lora_alpha}_ldrop${dropout_tag}_lr${lr}_beta${beta_tag}_alpha${alpha_tag}_gamma${gamma_tag}
+                            task_name=rwku_${base_model}_${forget_split}_ada_pop_lora_r${lora_r}_lalpha${lora_alpha}_ldrop${dropout_tag}_lr${lr}_${atag}_${btag}_gamma${gamma_tag}
                             run_dir=${output_root}/${task_name}
                             eval_dir=${run_dir}/evals
                             summary_path=${eval_dir}/DUET_SUMMARY.json
 
                             if [[ -f "${summary_path}" && "${FORCE_RERUN:-0}" != "1" ]]; then
-                                echo "[rwku][NPO] Skipping ${task_name}: found existing summary at ${summary_path}"
+                                echo "[rwku][ada_pop] Skipping ${task_name}: found existing summary at ${summary_path}"
                                 continue
                             fi
 
-                            echo "${task_name}: NPO LoRA unlearning ${base_model_path} on ${forget_split}"
+                            echo "${task_name}: AdaPop LoRA unlearning ${base_model_path} on ${forget_split}"
 
                             adapter_path=${run_dir}/adapter_model.safetensors
+                            log_file=${run_dir}/AdaPop.log
                             if [[ ! -f "${adapter_path}" || "${FORCE_RERUN:-0}" == "1" ]]; then
                                 mkdir -p "${run_dir}"
+                                echo "[TRAIN] $(date) task=${task_name}" | tee -a "${log_file}"
                                 python src/train.py --config-name=unlearn.yaml \
                                     experiment=${experiment} \
                                     trainer=${trainer} \
@@ -100,12 +114,12 @@ for lr in "${lrs[@]}"; do
                                     trainer.args.gradient_accumulation_steps=${gradient_accumulation_steps} \
                                     trainer.args.num_train_epochs=${num_train_epochs} \
                                     trainer.args.learning_rate=${lr} \
-                                    trainer.method_args.beta=${beta} \
-                                    trainer.method_args.alpha=${alpha} \
                                     trainer.method_args.gamma=${gamma} \
                                     trainer.method_args.retain_loss_type=NLL \
                                     retain_logs_path=null \
-                                    paths.output_dir=${run_dir}
+                                    paths.output_dir=${run_dir} \
+                                    "${extra_method_args[@]}" \
+                                    |& tee -a "${log_file}"
                             fi
 
                             mkdir -p "${eval_dir}"
@@ -130,7 +144,8 @@ for lr in "${lrs[@]}"; do
                                 paths.output_dir=${eval_dir} \
                                 retain_logs_path=null \
                             )
-                            python src/eval.py "${eval_cmd[@]}"
+                            echo "[EVAL] $(date) task=${task_name}" | tee -a "${log_file}"
+                            python src/eval.py "${eval_cmd[@]}" |& tee -a "${log_file}"
                         done
                     done
                 done

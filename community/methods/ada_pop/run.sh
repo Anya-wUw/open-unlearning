@@ -3,33 +3,35 @@
 set -euo pipefail
 
 script_dir=$(dirname "$(realpath "$0")")
-repo_root=$(realpath "${script_dir}/../..")
-source "${script_dir}/_splits.sh"
+repo_root=$(realpath "${script_dir}/../../..")
 
 export MASTER_PORT=$(python -c "import socket; s=socket.socket(); s.bind(('', 0)); print(s.getsockname()[1]); s.close()")
 echo "Master Port: $MASTER_PORT"
 
-base_model="${BASE_MODEL:-Llama-3.1-8B-Instruct}"
-lora_model="${MODEL_CONFIG:-${base_model}-lora}"
-hf_base_model_path="${HF_BASE_MODEL_PATH:-meta-llama/${base_model}}"
-local_sft_base="${LOCAL_SFT_BASE:-/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/llama3.1-8b_full_3ep_ft_tripunlamb}"
+base_model="Llama-3.1-8B-Instruct"
+lora_model="${base_model}-lora"
+hf_base_model_path="meta-llama/${base_model}"
+local_sft_base="/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/llama3.1-8b_full_3ep_ft_tripunlamb"
 
 use_sft_base=${USE_SFT_BASE:-1}
 if [[ "${use_sft_base}" == "1" ]]; then
     base_model_path="${local_sft_base}"
-    echo "[duet][ada_WGD] Using locally finetuned base checkpoint at ${base_model_path}"
+    echo "[ada_pop] Using locally finetuned base checkpoint at ${base_model_path}"
 else
     base_model_path="${hf_base_model_path}"
-    echo "[duet][ada_WGD] Using Hugging Face base checkpoint ${base_model_path}"
+    echo "[ada_pop] Using Hugging Face base checkpoint ${base_model_path}"
 fi
 
 experiment="unlearn/duet/wga_lora.yaml"
-trainer="AdaWGD"
+trainer="AdaPop"
 
-output_root="${repo_root}/saves/unlearn/duet/ada_WGD"
+output_root="${repo_root}/saves/unlearn/ada_pop"
 mkdir -p "${output_root}"
 
-set_forget_retain_splits
+forget_retain_splits=(
+    "city_forget_rare_5 city_fast_retain_500"
+    "city_forget_popular_5 city_fast_retain_500"
+)
 
 per_device_train_batch_size=${PER_DEVICE_TRAIN_BS:-1}
 gradient_accumulation_steps=${GRAD_ACCUM:-32}
@@ -66,10 +68,8 @@ read -r -a beta_consts <<< "${raw_beta_consts}"
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 
 for split in "${forget_retain_splits[@]}"; do
-    read -r forget_split retain_split forget_label <<< "${split}"
-    if [[ -z "${forget_label:-}" ]]; then
-        forget_label="${forget_split}"
-    fi
+    forget_split=$(echo "$split" | cut -d' ' -f1)
+    retain_split=$(echo "$split" | cut -d' ' -f2)
 
     for lr in "${lrs[@]}"; do
         for gamma in "${gammas[@]}"; do
@@ -94,20 +94,20 @@ for split in "${forget_retain_splits[@]}"; do
                         for lora_alpha in "${lora_alphas[@]}"; do
                             for lora_dropout in "${lora_dropouts[@]}"; do
                                 dropout_tag=${lora_dropout//./p}
-                                task_name=duet_${base_model}_${forget_label}_ada_WGD_lora_r${lora_r}_lalpha${lora_alpha}_ldrop${dropout_tag}_lr${lr}_${atag}_${btag}_gamma${gamma_tag}
+                                task_name=duet_${base_model}_${forget_split}_ada_pop_lora_r${lora_r}_lalpha${lora_alpha}_ldrop${dropout_tag}_lr${lr}_${atag}_${btag}_gamma${gamma_tag}
                                 run_dir=${output_root}/${task_name}
                                 eval_dir=${run_dir}/evals
                                 summary_path=${eval_dir}/DUET_SUMMARY.json
 
                                 if [[ -f "${summary_path}" && "${FORCE_RERUN:-0}" != "1" ]]; then
-                                    echo "[duet][ada_WGD] Skipping ${task_name}: found existing summary at ${summary_path}"
+                                    echo "[ada_pop] Skipping ${task_name}: found existing summary at ${summary_path}"
                                     continue
                                 fi
 
-                                echo "${task_name}: AdaWGD LoRA unlearning ${base_model_path} on ${forget_split}"
+                                echo "${task_name}: AdaPop LoRA unlearning ${base_model_path} on ${forget_split}"
 
                                 adapter_path=${run_dir}/adapter_model.safetensors
-                                log_file=${run_dir}/AdaWGD.log
+                                log_file=${run_dir}/AdaPop.log
                                 if [[ ! -f "${adapter_path}" || "${FORCE_RERUN:-0}" == "1" ]]; then
                                     mkdir -p "${run_dir}"
                                     echo "[TRAIN] $(date) task=${task_name}" | tee -a "${log_file}"
