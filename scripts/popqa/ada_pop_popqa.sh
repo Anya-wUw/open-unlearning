@@ -31,15 +31,15 @@ mkdir -p "${output_root}"
 forget_retain_splits=(
     "rare_forget5_sum fast_retain_500"
     "popular_forget5_sum fast_retain_500"
-    "rare_forget5 fast_retain_500"
-    "popular_forget5 fast_retain_500"
 )
 
 per_device_train_batch_size=${PER_DEVICE_TRAIN_BS:-1}
 gradient_accumulation_steps=${GRAD_ACCUM:-32}
 num_train_epochs=${NUM_EPOCHS:-5}
 
-raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4 1e-3}"
+#raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4 1e-3}"
+#1e-5 5e-5 1e-4 5e-4 1e-3 5e-3 1e-2
+raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4 1e-3 5e-3 1e-2}"
 raw_lrs="${raw_lrs//,/ }"
 raw_lrs="${raw_lrs//\"/}"
 raw_lrs="${raw_lrs//\'/}"

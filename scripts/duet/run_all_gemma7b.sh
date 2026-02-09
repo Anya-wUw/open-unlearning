@@ -9,7 +9,8 @@ export LRS=${LRS:-"1e-5 5e-5 1e-4 5e-4 1e-3"}
 export BASE_MODEL="gemma-7b-it"
 export MODEL_CONFIG="gemma-7b-it-lora"
 export HF_BASE_MODEL_PATH="google/gemma-7b-it"
-export USE_SFT_BASE=0
+export LOCAL_SFT_BASE="/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/gemma-7b-it_full_3ep_ft_tripunlamb"
+export USE_SFT_BASE=1
 
 echo "[duet][gemma-7b] Running GA"
 bash "${script_dir}/ga_duet.sh"

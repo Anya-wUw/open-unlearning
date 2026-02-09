@@ -31,8 +31,6 @@ mkdir -p "${output_root}"
 forget_retain_splits=(
     "rare_forget5_sum fast_retain_500"
     "popular_forget5_sum fast_retain_500"
-    "rare_forget5 fast_retain_500"
-    "popular_forget5 fast_retain_500"
 )
 
 per_device_train_batch_size=${PER_DEVICE_TRAIN_BS:-1}

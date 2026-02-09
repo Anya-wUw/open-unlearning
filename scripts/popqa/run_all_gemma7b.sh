@@ -9,7 +9,8 @@ export LRS=${LRS:-"1e-5 5e-5 1e-4 5e-4 1e-3"}
 export BASE_MODEL="gemma-7b-it"
 export MODEL_CONFIG="gemma-7b-it-lora"
 export HF_BASE_MODEL_PATH="google/gemma-7b-it"
-export USE_SFT_BASE=0
+export LOCAL_SFT_BASE="/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/popqa/gemma-7b-it_full_5ep_ft_popqa"
+export USE_SFT_BASE=1
 
 echo "[popqa][gemma-7b] Running GA"
 bash "${script_dir}/ga_popqa.sh"

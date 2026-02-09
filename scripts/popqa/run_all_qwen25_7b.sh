@@ -9,7 +9,8 @@ export LRS=${LRS:-"1e-5 5e-5 1e-4 5e-4 1e-3"}
 export BASE_MODEL="Qwen2.5-7B-Instruct"
 export MODEL_CONFIG="Qwen2.5-7B-Instruct-lora"
 export HF_BASE_MODEL_PATH="Qwen/Qwen2.5-7B-Instruct"
-export USE_SFT_BASE=0
+export LOCAL_SFT_BASE="/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/popqa/Qwen2.5-7B-Instruct_full_5ep_ft_popqa"
+export USE_SFT_BASE=1
 
 echo "[popqa][qwen2.5-7b] Running GA"
 bash "${script_dir}/ga_popqa.sh"
