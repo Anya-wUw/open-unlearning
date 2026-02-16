@@ -11,6 +11,7 @@ export MODEL_CONFIG="Qwen2.5-7B-Instruct-lora"
 export HF_BASE_MODEL_PATH="Qwen/Qwen2.5-7B-Instruct"
 export LOCAL_SFT_BASE="/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/Qwen2.5-7B-Instruct_full_3ep_ft_tripunlamb"
 export USE_SFT_BASE=1
+export MERGE_POPULARITY_FORGET=1
 
 echo "[duet][qwen2.5-7b] Running GA"
 bash "${script_dir}/ga_duet.sh"
