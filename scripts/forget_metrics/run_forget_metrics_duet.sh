@@ -7,12 +7,13 @@ repo_root=$(realpath "$(dirname "$0")/../..")
 bench="duet"
 forget_split="${FORGET_SPLIT:-city_forget_rare_5+city_forget_popular_5}"
 retain_split="${RETAIN_SPLIT:-city_fast_retain_500}"
-lr_tag="lr5e-4"
-GPU_ID="${GPU_ID:-1}"
+lr_tag="lr1e-3" #"lr5e-4"
 BATCH_SIZE="${BATCH_SIZE:-16}"
 AMP_MODE="${AMP_MODE:-bf16}"
 NUM_WORKERS="${NUM_WORKERS:-2}"
 PREFETCH_FACTOR="${PREFETCH_FACTOR:-2}"
+GPU_ID=0
+export TOKENIZERS_PARALLELISM=${TOKENIZERS_PARALLELISM:-false}
 
 models=(
   "Llama-3.1-8B-Instruct|Llama-3.1-8B-Instruct-lora|/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/llama3.1-8b_full_3ep_ft_tripunlamb"
@@ -32,7 +33,9 @@ for model_row in "${models[@]}"; do
       if [[ "${run_dir}" != *"${base_model}"* ]]; then
         continue
       fi
-      eval_dir="${run_dir}/evals"
+      forget_tag="${forget_split//+/__}"
+      retain_tag="${retain_split//+/__}"
+      eval_dir="${run_dir}/evals/forget_metrics__f_${forget_tag}__r_${retain_tag}"
       mkdir -p "${eval_dir}"
       echo "[metrics][duet] ${algo} -> ${run_dir}"
       python "${repo_root}/scripts/forget_metrics/forget_metrics.py" \

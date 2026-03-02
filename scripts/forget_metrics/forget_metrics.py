@@ -186,47 +186,17 @@ def _cosine(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return (a * b).sum(dim=-1)
 
 
-def _score_candidates(
-    model,
-    tokenizer,
-    template_args: Dict,
-    question: str,
-    candidates: List[str],
-    max_length: int,
-    amp_dtype: Optional[torch.dtype],
-) -> List[float]:
-    tokenized_rows = []
-    for cand in candidates:
-        tokenized_rows.append(
-            preprocess_chat_instance(
-                tokenizer,
-                template_args,
-                [question],
-                [cand],
-                max_length,
-                predict_with_generate=False,
-            )
-        )
-    input_ids = [torch.tensor(row["input_ids"], dtype=torch.long) for row in tokenized_rows]
-    attention_mask = [torch.tensor(row["attention_mask"], dtype=torch.long) for row in tokenized_rows]
-    labels = [torch.tensor(row["labels"], dtype=torch.long) for row in tokenized_rows]
-    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=0).to(model.device)
-    attention_mask = pad_sequence(attention_mask, batch_first=True, padding_value=0).to(model.device)
-    labels = pad_sequence(labels, batch_first=True, padding_value=-100).to(model.device)
-
-    amp_ctx = nullcontext()
-    if amp_dtype is not None and model.device.type == "cuda":
-        amp_ctx = torch.autocast(device_type="cuda", dtype=amp_dtype)
-    with torch.inference_mode(), amp_ctx:
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
-        logits = outputs.logits[:, :-1, :]
-        labels_shift = labels[:, 1:]
-        mask = labels_shift != -100
-        labels_gather = labels_shift.masked_fill(~mask, 0)
-        log_probs = torch.log_softmax(logits, dim=-1)
-        token_logprobs = log_probs.gather(-1, labels_gather.unsqueeze(-1)).squeeze(-1)
-        token_logprobs = token_logprobs * mask
-        return [float(val.item()) for val in token_logprobs.sum(dim=1)]
+def _mean_token_rank(log_probs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    """Average rank of the gold token over answer tokens (1=best)."""
+    labels_shift = labels[:, 1:]
+    mask = labels_shift != -100
+    labels_gather = labels_shift.masked_fill(~mask, 0)
+    gold_lp = log_probs.gather(-1, labels_gather.unsqueeze(-1)).squeeze(-1)
+    # Rank is 1 + number of logits strictly greater than gold logit.
+    token_rank = (log_probs > gold_lp.unsqueeze(-1)).sum(dim=-1).to(torch.float32) + 1.0
+    token_rank = token_rank * mask.to(token_rank.dtype)
+    denom = mask.sum(dim=1).clamp_min(1).to(token_rank.dtype)
+    return token_rank.sum(dim=1) / denom
 
 
 def evaluate(
@@ -253,7 +223,6 @@ def evaluate(
             if getattr(model_cfg.model_args, "low_cpu_mem_usage", None) is None:
                 model_cfg.model_args.low_cpu_mem_usage = True
     print(f"[forget_metrics] device_map={getattr(model_cfg.model_args, 'device_map', None)}")
-    tokenizer_args = model_cfg.tokenizer_args
     template_args = model_cfg.template_args
 
     base_cfg = OmegaConf.merge(model_cfg, {})
@@ -267,6 +236,12 @@ def evaluate(
 
     if adapter_path:
         print(f"[forget_metrics] loading adapter: {adapter_path}")
+        adapter_resolved = Path(adapter_path).resolve()
+        base_resolved = Path(base_model_path).resolve()
+        if adapter_resolved == base_resolved:
+            raise ValueError(
+                f"adapter_path equals base_model_path ({adapter_path}); comparison must be FT vs unlearned adapter."
+            )
         model_cfg2 = OmegaConf.merge(model_cfg, {})
         model_cfg2.model_args.pretrained_model_name_or_path = adapter_path
         model_cfg2.model_args.base_model_name_or_path = base_model_path
@@ -298,51 +273,30 @@ def evaluate(
         batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
         with torch.inference_mode(), amp_ctx:
             base_logprob, base_hidden, base_log_probs = _logprob_and_hidden(base_model, batch, compute_hidden)
+            base_rank = _mean_token_rank(base_log_probs, batch["labels"]) if compute_rank else torch.full_like(base_logprob, float("nan"))
             if adapter_path:
                 model_logprob, model_hidden, model_log_probs = _logprob_and_hidden(model, batch, compute_hidden)
+                model_rank = _mean_token_rank(model_log_probs, batch["labels"]) if compute_rank else torch.full_like(base_logprob, float("nan"))
                 if compute_kl:
                     kl = _kl_div(base_log_probs, model_log_probs, batch["labels"])
                 else:
                     kl = torch.full_like(base_logprob, float("nan"))
                 if compute_hidden and base_hidden is not None and model_hidden is not None:
                     cos = _cosine(base_hidden, model_hidden)
+                    hidden_l2 = torch.linalg.vector_norm(base_hidden - model_hidden, dim=-1)
                 else:
                     cos = torch.full_like(base_logprob, float("nan"))
+                    hidden_l2 = torch.full_like(base_logprob, float("nan"))
             else:
                 model_logprob = base_logprob
-                model_hidden = base_hidden
+                model_rank = base_rank
                 kl = torch.full_like(base_logprob, float("nan"))
                 cos = torch.full_like(base_logprob, float("nan"))
+                hidden_l2 = torch.full_like(base_logprob, float("nan"))
 
         for i in range(len(batch["indices"])):
-            candidates = batch["candidates"][i]
-            rank_base = 1
-            rank_model = 1
-            if compute_rank and candidates and len(candidates) > 1:
-                scores_base = _score_candidates(
-                    base_model,
-                    tokenizer,
-                    template_args,
-                    batch["questions"][i],
-                    candidates,
-                    max_length,
-                    amp_dtype,
-                )
-                scores_model = _score_candidates(
-                    model,
-                    tokenizer,
-                    template_args,
-                    batch["questions"][i],
-                    candidates,
-                    max_length,
-                    amp_dtype,
-                )
-                correct = candidates.index(batch["answers"][i]) if batch["answers"][i] in candidates else 0
-                rank_base = 1 + sum(s > scores_base[correct] for s in scores_base)
-                rank_model = 1 + sum(s > scores_model[correct] for s in scores_model)
-            elif not compute_rank:
-                rank_base = float("nan")
-                rank_model = float("nan")
+            rank_base = float(base_rank[i].item())
+            rank_model = float(model_rank[i].item())
 
             rows.append(
                 {
@@ -354,6 +308,7 @@ def evaluate(
                     "rank_model": float(rank_model),
                     "delta_rank": float(rank_model - rank_base),
                     "hidden_cos": float(cos[i].item()),
+                    "hidden_l2": float(hidden_l2[i].item()),
                     "kl": float(kl[i].item()),
                 }
             )
@@ -370,6 +325,7 @@ def evaluate(
         "rank_model_mean": _mean("rank_model"),
         "delta_rank_mean": _mean("delta_rank"),
         "hidden_cos_mean": _mean("hidden_cos"),
+        "hidden_l2_mean": _mean("hidden_l2"),
         "kl_mean": _mean("kl"),
     }
     return rows, summary
@@ -387,7 +343,7 @@ def main() -> None:
     parser.add_argument("--max-length", type=int, default=512)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--amp", choices=["none", "fp16", "bf16"], default="bf16")
-    parser.add_argument("--gpu", type=int, default=1)
+    parser.add_argument("--gpu", type=int, default=0)
     parser.add_argument("--no-hidden", action="store_true")
     parser.add_argument("--no-kl", action="store_true")
     parser.add_argument("--no-rank", action="store_true")

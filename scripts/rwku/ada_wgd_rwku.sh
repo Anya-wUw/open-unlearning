@@ -8,7 +8,7 @@ repo_root=$(realpath "${script_dir}/../..")
 export MASTER_PORT=$(python -c "import socket; s=socket.socket(); s.bind(('', 0)); print(s.getsockname()[1]); s.close()")
 echo "Master Port: $MASTER_PORT"
 
-base_model="${BASE_MODEL:-Llama-3.1-8B}"
+base_model="${BASE_MODEL:-Llama-3.1-8B-Instruct}"
 lora_model="${MODEL_CONFIG:-${base_model}-lora}"
 base_model_path="${HF_BASE_MODEL_PATH:-meta-llama/${base_model}}"
 

@@ -75,7 +75,9 @@ def process_file(path: Path, model) -> bool:
     for key, block in data.items():
         if not isinstance(block, dict) or "value_by_index" not in block:
             continue
-        if "ground_truth" not in next(iter(block.get("value_by_index", {}).values()), {}):
+        # Check if first item has ground_truth
+        first_item = next(iter(block.get("value_by_index", {}).values()), {})
+        if "ground_truth" not in first_item:
             continue
         out_key = key.replace("_rouge", "_cos_sim")
         out[out_key] = _compute_metric(block, model)
@@ -124,20 +126,27 @@ def main() -> None:
             return items
 
     for bench in benches:
-        root = base_dir / "saves" / "unlearn" / bench
-        if not root.exists():
-            print(f"[cos_sim] Skip missing benchmark: {bench}")
+        # Process unlearn runs
+        unlearn_root = base_dir / "saves" / "unlearn" / bench
+        paths = []
+        if unlearn_root.exists():
+            paths.extend([p for p in unlearn_root.glob("**/evals/DUET_EVAL.json") if "pretrained" not in p.parts])
+        
+        # Process base (orig) runs
+        base_eval_root = base_dir / "saves" / "evals" / f"{bench}_base"
+        if base_eval_root.exists():
+            paths.extend(list(base_eval_root.glob("**/DUET_EVAL.json")))
+
+        if not paths:
+            print(f"[cos_sim] No eval files found for benchmark: {bench}")
             continue
-        paths = [p for p in root.glob("**/evals/DUET_EVAL.json") if "pretrained" not in p.parts]
+
         for path in _iter(paths, f"{bench}: cos_sim"):
-            run_dir = path.parent.parent
-            algo = run_dir.parent.name
-            run_name = run_dir.name
-            print(f"[cos_sim] {bench} | {algo} | {run_name}")
+            print(f"[cos_sim] Processing {path}")
             if process_file(path, model):
                 total += 1
             else:
-                print(f"[cos_sim] Skipped (no value_by_index): {path}")
+                print(f"[cos_sim] Skipped (no value_by_index or ground_truth): {path}")
     print(f"Written COS_SIM_EVAL.json for {total} eval folders.")
 
 

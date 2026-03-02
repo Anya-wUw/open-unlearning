@@ -5,17 +5,16 @@ set -euo pipefail
 repo_root=$(realpath "$(dirname "$0")/../..")
 
 bench="popqa"
-forget_splits=(
-  "rare_forget5_sum"
-  "popular_forget5_sum"
-)
+rare_forget_split="${RARE_FORGET_SPLIT:-rare_forget5_sum}"
+popular_forget_split="${POPULAR_FORGET_SPLIT:-popular_forget5_sum}"
 retain_split="${RETAIN_SPLIT:-fast_retain_500}"
-lr_tag="lr5e-4"
-GPU_ID="${GPU_ID:-1}"
+lr_tag="lr1e-3"
 BATCH_SIZE="${BATCH_SIZE:-16}"
 AMP_MODE="${AMP_MODE:-bf16}"
 NUM_WORKERS="${NUM_WORKERS:-2}"
 PREFETCH_FACTOR="${PREFETCH_FACTOR:-2}"
+GPU_ID=0
+export TOKENIZERS_PARALLELISM=${TOKENIZERS_PARALLELISM:-false}
 
 models=(
   "Llama-3.1-8B-Instruct|Llama-3.1-8B-Instruct-lora|/mnt/extremessd10tb/borisiuk/open-unlearning/saves/finetune/popqa/llama3.1-8b_full_5ep_ft_popqa"
@@ -35,8 +34,20 @@ for model_row in "${models[@]}"; do
       if [[ "${run_dir}" != *"${base_model}"* ]]; then
         continue
       fi
-      for forget_split in "${forget_splits[@]}"; do
-        eval_dir="${run_dir}/evals"
+      run_name="$(basename "${run_dir}")"
+      selected_forget_splits=()
+      if [[ "${run_name}" == *"popular_forget5_sum"* ]]; then
+        selected_forget_splits=("${popular_forget_split}")
+      elif [[ "${run_name}" == *"rare_forget5_sum"* ]]; then
+        selected_forget_splits=("${rare_forget_split}")
+      else
+        selected_forget_splits=("${rare_forget_split}" "${popular_forget_split}")
+      fi
+
+      for forget_split in "${selected_forget_splits[@]}"; do
+        forget_tag="${forget_split//+/__}"
+        retain_tag="${retain_split//+/__}"
+        eval_dir="${run_dir}/evals/forget_metrics__f_${forget_tag}__r_${retain_tag}"
         mkdir -p "${eval_dir}"
         echo "[metrics][popqa] ${algo} -> ${run_dir} (${forget_split})"
         python "${repo_root}/scripts/forget_metrics/forget_metrics.py" \
