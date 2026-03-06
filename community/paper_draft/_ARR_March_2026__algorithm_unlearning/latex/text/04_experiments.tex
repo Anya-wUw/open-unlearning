@@ -76,6 +76,20 @@ WGA & 0.075 / 0.244 & \textbf{0.613} / \textbf{0.714} & 0.184 / 0.364 & \textbf{
 \end{tabularx}
 \end{table*}
 
+% --- Table 3: Internal Metrics (2x4) ---
+\begin{table*}[t]
+\centering
+\caption{Internal Unlearning Metrics (Forget Split) for \textbf{AdaPop} across Benchmarks and Models (Llama / Qwen / Gemma).}
+\label{tab:internal_metrics}
+\footnotesize
+\begin{tabularx}{\linewidth}{|l|c|c|c|c|}
+\hline
+\textbf{Benchmark} & \textbf{$\Delta$ Log-Prob} $\downarrow$ & \textbf{$\Delta$ Rank} $\uparrow$ & \textbf{KL Div} $\uparrow$ & \textbf{Hidden Cos} $\downarrow$ \\ \hline
+\textbf{DUET}  & -124.02 / -91.61 / -92.73 & 49946.26 / 14510.55 / -29586.87 & 40.22 / 21.33 / 37.33 & 1.00 / 1.00 / 1.00 \\ \hline
+\textbf{RWKU}  & -12.39 / -19.15 / 36.21 & -256.12 / 47.85 / -36811.11 & 7.58 / 5.71 / 7.87 & 1.00 / 1.00 / 1.00 \\ \hline
+\end{tabularx}
+\end{table*}
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{Algorithm Comparison}
 
