@@ -1,0 +1,158 @@
+
+
+\section{AdaPop: Adaptive Weighted Gradient Ascent (with Popularity-Aware Weighting)}
+
+\paragraph{Motivation.}  
+%Most unlearning algorithms do not explicitly account for the "popularity" of facts, which is crucial for determining how long a fact should be forgotten. Many methods rely on log-probability in their loss functions, without considering that high-frequency "noise" tokens, such as articles and prepositions, may dominate the process. To address this, we introduce a global metric of fact popularity. This metric enables control over the strength of forgetting based on both the model's confidence in a token and its frequency and "connections" in the dataset.
+
+Most unlearning algorithms do not explicitly account for the "popularity" of facts, which is crucial for determining how long a fact should be forgotten. Many methods rely on log-probability in their loss functions, without considering that high-frequency "noise" tokens, such as articles and prepositions, may dominate the process. Standard solutions, like simply summing negative NLL for forget and positive NLL for retain, fail to adapt to the varying importance of different tokens, leading to inefficient or biased forgetting. These methods often treat all facts equally, not considering their frequency or relevance. Additionally, they do not account for the differing impact of facts based on their connections in the dataset, meaning that less important or noisy information could be unintentionally forgotten or retained. As a result, they lack flexibility and can result in suboptimal performance. This is why more sophisticated mechanisms, such as dynamic coefficient adjustment, are needed to control the strength of forgetting based on both the model's confidence and token popularity.
+
+If access to the pretraining dataset is available, popularity can be quantified using citelinks, which measure the number of times a subject and object are referenced, such as in knowledge bases. A higher number of citations indicates greater popularity. When the pretraining dataset is unavailable, citelinks from other datasets or benchmarks, like Wikidata, can be used as a proxy.
+
+Additionally, most algorithms require manual tuning of the relative importance between retain and forget losses, often leading to computationally expensive optimization. AdaPop aims to efficiently balance these two objectives, automatically adjusting parameters to optimize the trade-off between forgetting unwanted information and retaining essential knowledge without sacrificing model performance.
+
+
+\paragraph{Setting.}  
+Let $\mathcal{F}=\{(x_i,y_i,s_i)\}_{i=1}^{N_F}$ be the \emph{forget} set, where $s_i>0$ is a popularity score (in our case it's \texttt{pop\_sum}).  
+Let $\mathcal{R}=\{(x_j,y_j)\}_{j=1}^{N_R}$ be the \emph{retain} set.  
+We train an autoregressive model $q_\theta$ with conditional token probabilities  
+$q_\theta(y_t \mid x, y_{<t})$.  
+For a token position $t$ in sequence $i$:
+\[
+\ell_{i,t}(\theta) = -\log q_\theta(y_{i,t} \mid x_i, y_{i,<t}), \qquad p_{i,t}(\theta) = \exp(-\ell_{i,t}(\theta)) = q_\theta(y_{i,t} \mid x_i, y_{i,<t}).
+\]
+We denote by $\Omega_{\mathcal{F}}$ and $\Omega_{\mathcal{R}}$ the sets of valid token indices (i.e., labels not masked by \texttt{-100}), and let $|\Omega|$ be their sizes.
+
+\paragraph{Goal.}  
+AdaPop aims to \emph{increase} loss on $\mathcal{F}$ (forget) while preventing excessive degradation on $\mathcal{R}$ (retain).  
+This is implemented as a weighted ascent objective on $\mathcal{F}$ plus a retain loss on $\mathcal{R}$, where the retain coefficient $\alpha$ is adapted online to keep retain drift under control.
+
+\subsection{Forget Objective}
+
+\paragraph{Popularity-dependent exponent.}  
+Each forget sample $i$ is assigned an exponent $\beta_i$ based on the popularity score $s_i$ of the corresponding fact (question-answer pair).  
+The exponent can be defined as:
+\[
+\beta_i = f(s_i),
+\]
+where \( f(s_i) \) is a function of the popularity score \( s_i \). In practice, this function is often defined empirically to control the strength of the update based on popularity. For example, one possible form is:
+\[
+\beta_i = 58.7 s_i^{-0.796},
+\]
+where the constant \( 58.7 \) and the exponent \( -0.796 \) were chosen empirically to balance the influence of frequent and rare facts. 
+
+In this formulation: Popular facts (with higher \( s_i \)) are given a smaller exponent, meaning their impact on model updates is lessened. Rare facts (with smaller \( s_i \)) are assigned a larger exponent, increasing their influence.
+
+It is also possible to use a constant exponent \( \beta_i = \beta_{\mathrm{const}} \) if desired (that means all facts are equally important). 
+
+\paragraph{Detached token weight.}  
+Define a detached confidence weight:
+\[
+w_{i,t} = \left(\mathrm{stopgrad}(p_{i,t}(\theta))\right)^{\beta_i}.
+\]
+The \texttt{stopgrad} operation ensures that gradients do not flow through \( w_{i,t} \), preventing any changes to the weight during the backward pass.
+
+\paragraph{Forget loss (ascent).}  
+Ada-WGD uses the following loss function for the forget set:
+\[
+L_f(\theta) = -\frac{1}{|\Omega_{\mathcal{F}}|} \sum_{(i,t) \in \Omega_{\mathcal{F}}} w_{i,t} \ell_{i,t}(\theta).
+\]
+Since \( L_f \) is negative, minimizing this loss performs a weighted gradient ascent on the forget token negative log-likelihood. Tokens that the model is confident about (i.e., \( p_{i,t} \) is large) receive larger weights \( w_{i,t} \), pushing the model to forget these tokens more strongly.
+
+\subsection{Retain Loss and Drift Measurement}
+
+\paragraph{Retain loss.}  
+By default, AdaPop uses masked negative log-likelihood for the retain set:
+\[
+L_r(\theta) = \frac{1}{|\Omega_{\mathcal{R}}|} \sum_{(j,t) \in \Omega_{\mathcal{R}}} \ell_{j,t}(\theta).
+\]
+Alternatively, one may use a Kullback-Leibler (KL) divergence constraint to a frozen reference model, but here we focus on the standard NLL.
+
+\paragraph{Epoch-level retain statistic (EMA).}  
+Let \( r^{(\mathrm{step})} \) be the per-step retain loss value. Define an exponential moving average (EMA) statistic for retain loss:
+\[
+R_k = \mathrm{EMA}\left(r^{(\mathrm{step})}\right) \quad \text{over epoch } k.
+\]
+Let \( R_{\mathrm{ref}} \) be a baseline retain statistic. In the current implementation, \( R_{\mathrm{ref}} \) is set to the first epoch's retain EMA:  
+\( R_{\mathrm{ref}} \leftarrow R_1 \).
+
+\paragraph{One-sided relative drift.}  
+AdaPop measures retain degradation via:
+\[
+\delta_k = \max\left( 0, \frac{R_k - R_{\mathrm{ref}}}{\max(R_{\mathrm{ref}}, \epsilon_0)} \right),
+\]
+where \( \epsilon_0 \) is a small constant (e.g., \( 10^{-8} \)) to ensure numerical stability.  
+This is one-sided: if the retain loss improves (\( R_k < R_{\mathrm{ref}} \)), \( \delta_k = 0 \), and no penalty is triggered.
+
+\subsection{Primal Update (Model Parameters)}
+
+At epoch \( k \), AdaPop minimizes the combined loss:
+\[
+L_k(\theta) = \gamma_k L_f(\theta) + \alpha_{\mathrm{eff},k} L_r(\theta).
+\]
+The forget coefficient \( \gamma_k \) can be warm-started:
+\[
+\gamma_k = \gamma_{\mathrm{final}} \min\left(1, \frac{k}{K_w}\right),
+\]
+where \( K_w = 0 \) means no warmup (i.e., \( \gamma_k = \gamma_{\mathrm{final}} \)).
+
+\paragraph{Gradient step.}  
+For each paired batch \( (B_{\mathcal{F}}, B_{\mathcal{R}}) \), the update is:
+\[
+\theta \leftarrow \theta - \eta \nabla_\theta \left( \gamma_k L_f(\theta) + \alpha_{\mathrm{eff},k} L_r(\theta) \right).
+\]
+
+\subsection{Dual-Ascent Retain Control (Updating $\alpha$)}
+
+\paragraphInterpretation.
+AdaPop treats \( \alpha_k \) as a dual variable for the constraint \( \delta_k \le \varepsilon \).
+
+\paragraph{Dual update (projected).}
+Let \( \alpha_k = \alpha_0 + \lambda_k \) with \( \lambda_k \ge 0 \). AdaPop updates \( \lambda_k \) as follows:
+\[
+\lambda_{k+1} = \Pi_{[0, \lambda_{\max}]}\left( \lambda_k + \eta_\lambda (\delta_k - \varepsilon) \right),
+\]
+and projects \( \alpha_k \) to \( [0, \gamma_k] \):
+\[
+\alpha_{k+1} = \Pi_{[0, \gamma_k]}(\alpha_0 + \lambda_{k+1}).
+\]
+
+\paragraph{Constant-mode overrides.}  
+AdaPop supports fixed coefficients for ablations:
+\[
+\alpha_k \equiv \alpha_{\mathrm{const}} \quad \text{if set (controller disabled),}
+\qquad
+\beta_i \equiv \beta_{\mathrm{const}} \quad \text{if set.}
+\]
+
+\subsection{Algorithm}
+
+\begin{algorithm}[H]
+\caption{\textbf{AdaPop}}
+\begin{algorithmic}[1]
+\STATE Initialize parameters $\theta$.
+\STATE Set $\alpha_1 \leftarrow \alpha_0$; set $R_{\mathrm{ref}} \leftarrow \varnothing$.
+\FOR{$k = 1$ to $K$}
+  \STATE Set $\gamma_k \leftarrow \gamma_{\mathrm{final}} \min\left(1, \frac{k}{K_w}\right)$.
+  \FOR{each paired batch $(B_{\mathcal{F}}, B_{\mathcal{R}})$}
+    \STATE For each $i \in B_{\mathcal{F}}$, set $\beta_i \leftarrow \mathrm{clip}(58.7 s_i^{-0.796}, 0.05, 2)$ (or $\beta_{\mathrm{const}}$).
+    \STATE Compute $L_f(\theta)$ using $w_{i,t} = \mathrm{stopgrad}(p_{i,t})^{\beta_i}$ and masked tokens.
+    \STATE Compute $L_r(\theta)$ as masked NLL on $B_{\mathcal{R}}$.
+    \STATE Set $\alpha_{\mathrm{eff},k} \leftarrow \alpha_k$ (or optional per-step modulation using $\bar{\beta}$).
+    \STATE Update $\theta \leftarrow \theta - \eta \nabla_\theta (\gamma_k L_f(\theta) + \alpha_{\mathrm{eff},k} L_r(\theta))$.
+    \STATE Update step-level EMAs for retain $R_k$ and forget-strength $F_k$.
+  \ENDFOR
+  \IF{$R_{\mathrm{ref}} = \varnothing$}
+    \STATE Set $R_{\mathrm{ref}} \leftarrow R_k$.
+  \ENDIF
+  \STATE Compute drift $\delta_k = \max(0, (R_k - R_{\mathrm{ref}}) / \max(R_{\mathrm{ref}}, \epsilon_0))$.
+  \IF{$\alpha_{\mathrm{const}}$ is not set}
+    \STATE Update $\lambda_{k+1} = \Pi_{[0, \lambda_{\max}]}\left( \lambda_k + \eta_\lambda (\delta_k - \varepsilon) \right)$.
+    \STATE Set $\alpha_{k+1} = \Pi_{[0, \gamma_k]} (\alpha_0 + \lambda_{k+1})$.
+  \ELSE
+    \STATE Set $\alpha_{k+1} \leftarrow \Pi_{[0, \gamma_k]} (\alpha_{\mathrm{const}})$.
+  \ENDIF
+\ENDFOR
+\STATE \textbf{return} $\theta^\star$
+\end{algorithmic}
+\end{algorithm}

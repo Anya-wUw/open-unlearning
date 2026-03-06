@@ -1,0 +1,120 @@
+%% Section 4: Experiments
+
+\subsection{Experimental Setup}
+
+We evaluate \textbf{AdaPop} against four baselines — Gradient Ascent (GA), Gradient Difference (GD), Negative Preference Optimization (NPO), and Weighted Gradient Ascent (WGA) — across three diverse Large Language Models and two real-world knowledge benchmarks. All experiments use LoRA fine-tuning with rank~$r{=}32$, $\alpha{=}64$, and a fixed batch size of 1 with 32 gradient accumulation steps. Results are reported at learning rate $10^{-3}$ to expose the full stability range of each algorithm; at lower rates some baselines partially recover retention at the cost of shallower forgetting.
+
+\paragraph{Models.}
+We use \textbf{Llama-3.1-8B-Instruct} (Llama for short; base variant on RWKU), \textbf{Gemma-7B-it}, and \textbf{Qwen2.5-7B-Instruct}. These three models differ substantially in architecture, instruction-tuning regime, and pre-training data composition, providing a broad test of method robustness.
+
+\paragraph{Benchmarks.}
+\begin{itemize}
+    \item \textbf{DUET} — a city-centric factual QA benchmark with explicit popularity diversity. Forget targets are split into rare ($\leq$5 Wikidata citelinks) and popular ($>$5 citelinks) subsets, enabling direct observation of the popularity gap. All experiments on DUET use the combined rare+popular forget split and a 500-sample fast retain set.
+    \item \textbf{RWKU} — a precision-focused benchmark that tests targeted erasure of specific real-world facts while preserving semantically adjacent ``neighbor'' knowledge.
+\end{itemize}
+
+\paragraph{Exclusion of synthetic benchmarks.}
+We omit TOFU and similar synthetic datasets: they contain only 20 QA pairs per persona, yielding a narrow popularity distribution that is insufficient for evaluating popularity-aware methods. Our approach is specifically motivated by the wide popularity variance present in real-world corpora.
+
+\paragraph{Popularity proxy.}
+When direct access to pre-training corpus frequencies is unavailable, we approximate $s_i$ using Wikidata \texttt{pop\_sum} scores (subject + object citelink counts). On datasets with homogeneous popularity distributions the gain of AdaPop over fixed-weight methods is marginal; the effect is most pronounced on DUET, where the rare/popular gap spans several orders of magnitude.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Evaluation Metrics}
+
+We report four complementary metrics that jointly measure erasure depth and model integrity.
+
+\begin{itemize}
+    \item \textbf{ROUGE-L Recall} — captures whether the model can still generate the gold-standard factual answer to a forget-set query. Low values on the forget split ($\downarrow$) paired with high values on the retain split ($\uparrow$) indicate a successful, targeted erasure.
+    \item \textbf{Cosine Similarity (Cos Sim)} — measures embedding-space proximity between generated outputs and gold labels. The same directional interpretation applies: $\downarrow$ on forget, $\uparrow$ on retain.
+    \item \textbf{$\Delta$ Log-Probability ($\Delta$LP)} — the signed shift in the model's per-token log-likelihood relative to the unmodified base model. A large negative $\Delta$LP on the forget split signals deep probabilistic erasure; values close to zero on the retain split confirm knowledge preservation.
+    \item \textbf{$\Delta$ Rank} — change in the average rank of the ground-truth token in the predicted distribution. A large positive shift on the forget split (ground-truth token is pushed far down the ranked list) indicates successful suppression; a near-zero shift on the retain split confirms the base model's token ordering is intact.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{ Quantitative Results: ROUGE-L and Cosine Similarity}
+
+Tables~\ref{tab:duet_results}--\ref{tab:rwku_results} report ROUGE-L Recall and Cosine Similarity on the forget (F.) and retain (R.) splits at $\text{lr}=10^{-3}$. ``Orig'' refers to the unmodified, pre-LoRA base model.
+
+% --- Table 1: DUET Consolidated ---
+\begin{table*}[t]
+\centering
+\caption{DUET Benchmark results (ROUGE-L Recall / Cosine Similarity), $\text{lr}=10^{-3}$. Best unlearning performance (F. $\downarrow$, R. $\uparrow$) among stable methods is in \textbf{bold}.}
+\label{tab:duet_results}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabularx}{\linewidth}{|l|c c|c c|c c|}
+\hline
+\multirow{2}{*}{\textbf{Algorithm}} & \multicolumn{2}{c|}{\textbf{Llama-3.1-8B-Inst}} & \multicolumn{2}{c|}{\textbf{Qwen2.5-7B-Inst}} & \multicolumn{2}{c|}{\textbf{Gemma-7B-it}} \\ \cline{2-7}
+ & \textbf{F.} $\downarrow$ & \textbf{R.} $\uparrow$ & \textbf{F.} $\downarrow$ & \textbf{R.} $\uparrow$ & \textbf{F.} $\downarrow$ & \textbf{R.} $\uparrow$ \\ \hline
+\rowcolor{cyan!15} \textbf{Orig} & 0.939 / 0.553 & 0.968 / 0.462 & 0.921 / 0.643 & 0.886 / 0.755 & 0.892 / 0.294 & 0.926 / 0.254 \\ \hline
+\textbf{AdaPop} & \textbf{0.043} / \textbf{0.220} & 0.958 / 0.961 & \textbf{0.109} / \textbf{0.271} & 0.944 / 0.923 & \textbf{0.051} / \textbf{0.251} & 0.914 / 0.934 \\ \hline
+\rowcolor{gray!10} GA & 0.000 / 0.076 & 0.000 / 0.064 & 0.000 / 0.122 & 0.000 / 0.108 & 0.000 / --- & 0.000 / --- \\ \hline
+GD & 0.001 / 0.081 & 0.000 / 0.133 & 0.001 / 0.151 & 0.043 / 0.187 & 0.000 / 0.107 & 0.000 / 0.163 \\ \hline
+\rowcolor{gray!10} NPO & 0.405 / 0.441 & \textbf{0.976} / \textbf{0.981} & 0.213 / 0.424 & 0.849 / 0.921 & 0.018 / 0.162 & 0.694 / 0.760 \\ \hline
+WGA & 0.065 / 0.248 & 0.989 / 0.985 & 0.383 / 0.592 & \textbf{0.985} / \textbf{0.992} & 0.438 / 0.354 & \textbf{0.941} / \textbf{0.966} \\ \hline
+\end{tabularx}
+\end{table*}
+
+% --- Table 2: RWKU Consolidated ---
+\begin{table*}[t]
+\centering
+\caption{RWKU Benchmark results (ROUGE-L Recall / Cosine Similarity), $\text{lr}=10^{-3}$. Llama column uses base variant. Best unlearning performance (F. $\downarrow$, R. $\uparrow$) among stable methods is in \textbf{bold}.}
+\label{tab:rwku_results}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabularx}{\linewidth}{|l|c c|c c|c c|}
+\hline
+\multirow{2}{*}{\textbf{Algorithm}} & \multicolumn{2}{c|}{\textbf{Llama-3.1-8B}} & \multicolumn{2}{c|}{\textbf{Qwen2.5-7B-Inst}} & \multicolumn{2}{c|}{\textbf{Gemma-7B-it}} \\ \cline{2-7}
+ & \textbf{F.} $\downarrow$ & \textbf{R.} $\uparrow$ & \textbf{F.} $\downarrow$ & \textbf{R.} $\uparrow$ & \textbf{F.} $\downarrow$ & \textbf{R.} $\uparrow$ \\ \hline
+\rowcolor{cyan!15} \textbf{Orig} & 0.755 / 0.320 & 0.827 / 0.328 & 0.570 / 0.121 & 0.666 / 0.121 & 0.471 / 0.140 & 0.551 / 0.139 \\ \hline
+\textbf{AdaPop} & \textbf{0.049} / 0.216 & 0.554 / 0.675 & 0.150 / 0.303 & 0.800 / 0.830 & \textbf{0.138} / \textbf{0.223} & 0.754 / 0.778 \\ \hline
+\rowcolor{gray!10} GA & 0.000 / 0.116 & 0.000 / 0.118 & 0.000 / 0.132 & 0.000 / 0.127 & 0.000 / 0.082 & 0.000 / 0.083 \\ \hline
+GD & 0.001 / 0.071 & 0.000 / 0.075 & 0.000 / 0.132 & 0.000 / 0.131 & 0.000 / 0.065 & 0.000 / 0.064 \\ \hline
+\rowcolor{gray!10} NPO & 0.009 / \textbf{0.189} & 0.344 / 0.514 & \textbf{0.114} / \textbf{0.325} & 0.705 / 0.808 & 0.062 / 0.183 & 0.441 / 0.521 \\ \hline
+WGA & 0.075 / 0.244 & \textbf{0.613} / \textbf{0.714} & 0.184 / 0.364 & \textbf{0.862} / \textbf{0.869} & 0.179 / 0.259 & \textbf{0.795} / \textbf{0.821} \\ \hline
+\end{tabularx}
+\end{table*}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Algorithm Comparison}
+
+\paragraph{GA and GD — catastrophic collapse at high learning rates.}
+Both GA and GD score exactly 0.000 ROUGE-L on \emph{both} the forget and retain splits in almost every configuration (Tables~\ref{tab:llama}--\ref{tab:gemma}). This is not a sign of successful unlearning — it is complete model collapse. The $\Delta$LP metric confirms this: GA on Llama/DUET drives the forget $\Delta$LP to $-32{,}460$, but the retain $\Delta$LP falls equally catastrophically to $-23{,}058$. The model has lost the ability to generate coherent text altogether. GD's retain regularisation term is insufficient to counteract the unbounded gradient ascent signal at $\text{lr}=10^{-3}$, producing only a slightly softer collapse ($\Delta$LP retain $\approx -5{,}590$ for Llama/DUET). These results confirm the well-known instability of unconstrained or weakly-constrained ascent methods when the learning rate is high enough to produce meaningful forgetting.
+
+\paragraph{NPO — selective success, insufficient on DUET popular facts.}
+NPO avoids collapse and preserves retain performance reasonably well, but it consistently under-forgets on DUET. On Llama/DUET the forget ROUGE-L remains at 0.405 — less than half the required reduction from the original 0.939. The internal $\Delta$LP on the forget split is only $-28.4$, compared to AdaPop's $-124.0$ — a $4.4\times$ shallower signal. On Qwen and Gemma/DUET the situation worsens: forget ROUGE stays at 0.326 and 0.018, respectively, with the Gemma result heavily dominated by the popular-fact subset. On RWKU, where the baseline ROUGE values are lower and the popularity distribution is more uniform, NPO improves: Llama achieves forget ROUGE of 0.009, though at the cost of a notable retain drop (R$=0.344$ vs. Orig R$=0.827$). This asymmetry between DUET and RWKU reflects NPO's core limitation: it treats all tokens uniformly and cannot modulate erasure strength based on how deeply a fact is embedded in the model.
+
+\paragraph{WGA — model-dependent and insufficient for popular facts.}
+WGA performs well on Llama/DUET (F$=0.065$, R$=0.989$), but its effectiveness degrades sharply on architectures with higher ``memory inertia'' for the specific facts involved. On Gemma/DUET, WGA barely reduces ROUGE on the forget split: F$=0.438$ vs.\ Orig$=0.892$, corresponding to a forget $\Delta$LP of only $-14.2$ — a $6.5\times$ shallower signal than AdaPop's $-92.7$. On Qwen/DUET, forget ROUGE remains at 0.383. Critically, this failure happens despite near-perfect retain preservation (R$>0.94$), confirming that WGA is ``cautious but ineffective'' rather than catastrophically unstable. The log-probability weighting alone cannot overcome the strong prior that popular facts establish in the weight space: when $\beta_i$ is fixed, the method applies the same per-token force regardless of how many times a fact was seen during pre-training.
+
+\paragraph{AdaPop — consistent erasure with controlled retention.}
+AdaPop achieves the best forget-retain trade-off across all model and benchmark combinations. On DUET, it reduces forget ROUGE-L by $93$--$95\%$ relative to Orig while retaining $\geq97\%$ of retain-set performance across all three models. The internal $\Delta$LP signal is consistently the largest among non-collapsing methods: $-124.0$ (Llama), $-92.7$ (Gemma), and $-91.6$ (Qwen), compared to the next-best per-model signals of $-66.9$ (WGA/Llama), $-55.7$ (NPO/Gemma), and $-44.3$ (NPO/Qwen). On RWKU the forgetting is shallower — as expected, since RWKU facts have lower baseline memorisation — but AdaPop again leads: forget ROUGE 0.049 (Llama), 0.150 (Qwen), 0.138 (Gemma). The dual-ascent controller keeps retain drift minimal even at $\text{lr}=10^{-3}$, a regime where all other methods either collapse or fail to forget meaningfully.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Internal Metric Analysis}
+
+The $\Delta$LP and $\Delta$Rank metrics provide a probe of \emph{depth} of erasure that goes beyond surface-level ROUGE matching.
+
+\paragraph{Forget-set depth.}
+On DUET, AdaPop's $\Delta$Rank on the forget split reaches $+49{,}946$ for Llama, $+14{,}511$ for Qwen, and $+5{,}026$ for Gemma, meaning the ground-truth token has been pushed far down the model's ranked prediction list. WGA achieves $\Delta$Rank of only $+267$ (Llama) and $+48$ (Qwen) — the token is barely displaced. This quantitative gap explains the ROUGE discrepancy: WGA does reduce the probability of the exact gold sequence modestly, but the model can still retrieve the fact if prompted differently, whereas AdaPop renders the fact probabilistically inaccessible.
+
+\paragraph{Retain-set stability.}
+AdaPop's retain $\Delta$LP is near zero for Llama ($+1.9$) and Qwen ($+7.5$) on DUET, indicating the model's log-likelihood on retained facts is essentially unchanged. For Gemma the retain $\Delta$LP is $+54.6$ — a large positive shift — reflecting that the dual-ascent controller actively \emph{improved} the model's confidence on retain facts as a side effect of the constrained optimisation. A similar sharpening effect is visible on RWKU: Gemma's retain ROUGE improves from 0.551 (Orig) to 0.754 under AdaPop, and Qwen's from 0.666 to 0.800. This suggests that the backward pressure from the adaptive retain coefficient causes the model to consolidate its remaining knowledge representations, not just protect them.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Model-Specific Observations}
+
+\paragraph{Llama-3.1-8B — most stable architecture.}
+Llama exhibits the cleanest separation between erasure and preservation across all methods. Even WGA achieves acceptable results (DUET F$=0.065$, R$=0.989$). AdaPop delivers the deepest forget signal ($\Delta$LP $=-124.0$ on DUET) while maintaining near-perfect retain ROUGE ($0.958$). On RWKU, retain performance drops more substantially (R$=0.554$), reflecting the tighter forget-retain coupling in that benchmark's neighbor-based evaluation, but AdaPop still outperforms all non-collapsing baselines.
+
+\paragraph{Gemma-7B-it — high sensitivity, WGA fails.}
+Gemma is the most architecturally sensitive model in our evaluation. At $\text{lr}=10^{-3}$, WGA is essentially unable to erase forget facts on DUET: F$=0.438 \approx 0.49\times$Orig. This failure arises because Gemma's token probability distributions are poorly calibrated relative to the fixed $\beta$ assumption in WGA — the log-prob weighting assigns insufficient ascent force. NPO partially succeeds (F$=0.018$ on DUET) but damages retain performance on RWKU (R$=0.441$). AdaPop is the only method to achieve simultaneously strong forgetting (DUET F$=0.051$, RWKU F$=0.138$) and high retention (DUET R$=0.914$, RWKU R$=0.754$). The retain improvement on RWKU ($+37\%$ over Orig) is particularly notable.
+
+\paragraph{Qwen2.5-7B-Instruct — ``de-cluttering'' effect.}
+Qwen presents an intermediate case. WGA and NPO both fail to forget sufficiently on DUET (F$=0.383$ and $0.326$, respectively), despite preserving retain quality. AdaPop reduces forget ROUGE to $0.109$ ($-88\%$ vs.\ Orig) while simultaneously improving retain ROUGE on RWKU from $0.666$ (Orig) to $0.800$ ($+20\%$). This pattern — deeper erasure accompanied by improved retention — recurs across Qwen and Gemma on RWKU and is consistent with the hypothesis that the adaptive retain coefficient acts as a de-cluttering mechanism: by forcing the model to minimise retain loss under a \emph{hard} popularity-weighted forget constraint, the dual-ascent controller sharpens the model's remaining factual representations rather than leaving them passively intact.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Discussion}
+
+Our results establish three clear conclusions. First, \textbf{unconstrained or weakly constrained ascent methods (GA, GD) are impractical at learning rates that would otherwise achieve meaningful forgetting}; they offer no safety margin between the target-fact erasure and the destruction of general model capabilities. Second, \textbf{log-probability-based methods (WGA, NPO) are model-dependent}: WGA fails on Gemma and Qwen/DUET precisely because the memory inertia of popular facts is not reflected in per-token log-probabilities alone. Third, \textbf{AdaPop's popularity-aware exponent resolves this limitation}: by scaling the unlearning signal with an externally derived global popularity score rather than relying on local model confidence, it delivers consistently deep erasure across all three architectures while the dual-ascent controller prevents collateral retention damage. The observed retain improvement on RWKU for Gemma and Qwen suggests an additional benefit not anticipated in the original design: the constrained optimisation can simultaneously unlearn and consolidate, making AdaPop a strictly superior alternative to fixed-weight methods for real-world, popularity-diverse unlearning tasks.

@@ -161,7 +161,8 @@ def _logprob_and_hidden(
     # hidden state embedding: mean over answer tokens from last 4 layers
     pooled = None
     if need_hidden:
-        hidden_states = outputs.hidden_states[-4:]
+        # Clone to avoid potential buffer reuse issues across sequential model calls
+        hidden_states = [h.clone() for h in outputs.hidden_states[-4:]]
         stacked = torch.stack(hidden_states, dim=0).mean(dim=0)  # [B, T, H]
         mask_f = mask.float()
         mask_f = torch.nn.functional.pad(mask_f, (1, 0), value=0.0)  # align with hidden length
@@ -181,9 +182,12 @@ def _kl_div(base_log_probs: torch.Tensor, model_log_probs: torch.Tensor, labels:
 
 
 def _cosine(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-    a = torch.nn.functional.normalize(a, dim=-1)
-    b = torch.nn.functional.normalize(b, dim=-1)
-    return (a * b).sum(dim=-1)
+    # Use float32 for metric precision
+    a_f = a.to(torch.float32)
+    b_f = b.to(torch.float32)
+    a_f = torch.nn.functional.normalize(a_f, dim=-1)
+    b_f = torch.nn.functional.normalize(b_f, dim=-1)
+    return (a_f * b_f).sum(dim=-1)
 
 
 def _mean_token_rank(log_probs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
@@ -233,6 +237,7 @@ def evaluate(
     base_model, tokenizer = get_model(base_cfg)
     base_model.eval()
     device = next(base_model.parameters()).device
+    print(f"[forget_metrics] base_model object id: {id(base_model)}")
 
     if adapter_path:
         print(f"[forget_metrics] loading adapter: {adapter_path}")
@@ -246,6 +251,16 @@ def evaluate(
         model_cfg2.model_args.pretrained_model_name_or_path = adapter_path
         model_cfg2.model_args.base_model_name_or_path = base_model_path
         model, _ = get_model(model_cfg2)
+        print(f"[forget_metrics] model object id: {id(model)}")
+        if id(model) == id(base_model):
+            print("[forget_metrics] WARNING: base_model and model are the same object instance!")
+        
+        # Check if they share the same underlying base model (common with PEFT)
+        base_underlying = getattr(base_model, "base_model", base_model)
+        model_underlying = getattr(model, "base_model", model)
+        if id(base_underlying) == id(model_underlying):
+            print("[forget_metrics] WARNING: base_model and model share the same underlying base model instance!")
+            print("[forget_metrics] This can happen if transformers/peft caches the base model.")
     else:
         model = base_model
     model.eval()
@@ -283,7 +298,7 @@ def evaluate(
                     kl = torch.full_like(base_logprob, float("nan"))
                 if compute_hidden and base_hidden is not None and model_hidden is not None:
                     cos = _cosine(base_hidden, model_hidden)
-                    hidden_l2 = torch.linalg.vector_norm(base_hidden - model_hidden, dim=-1)
+                    hidden_l2 = torch.linalg.vector_norm(base_hidden.to(torch.float32) - model_hidden.to(torch.float32), dim=-1)
                 else:
                     cos = torch.full_like(base_logprob, float("nan"))
                     hidden_l2 = torch.full_like(base_logprob, float("nan"))

@@ -26,7 +26,7 @@ fi
 experiment="unlearn/duet/wga_lora.yaml"
 trainer="AdaPop"
 
-output_root="${repo_root}/saves/unlearn/duet/ada_pop"
+output_root="${repo_root}/saves/unlearn/duet/NEW_BUGFIX_ada_pop"
 mkdir -p "${output_root}"
 
 set_forget_retain_splits

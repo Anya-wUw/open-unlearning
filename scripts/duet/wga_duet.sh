@@ -26,7 +26,7 @@ fi
 experiment="unlearn/duet/wga_lora.yaml"
 trainer="WGA"
 
-output_root="${repo_root}/saves/unlearn/duet/wga"
+output_root="${repo_root}/saves/unlearn/duet/NEW_BUGFIX_wga"
 mkdir -p "${output_root}"
 
 set_forget_retain_splits

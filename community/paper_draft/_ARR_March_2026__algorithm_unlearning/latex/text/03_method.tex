@@ -1,0 +1,127 @@
+% %% take from other/ada_pop.tex
+
+%% take from other/ada_pop.tex
+
+In this section, we detail the \textbf{AdaPop} (Adaptive Popularity) framework. Modern unlearning faces a critical challenge: the time-consuming search for optimal hyperparameters and the extreme training instability caused by minor changes to these parameters. The most SOTA algorithms like Gradient Difference (GD), NPO, or WGA often require meticulous manual tuning of the specific unlearning parameters like retain influence coefficient to balance knowledge erasure and model utility. 
+
+AdaPop addresses this by minimizing the hyperparameter space to the basics used in standard Gradient Ascent (GA), such as learning rate, number of epochs, and PEFT configurations, while automating the balance between erasure and retention. Our approach moves beyond local model confidence by integrating a global popularity metric and an automated dual-ascent controller.
+
+\subsection{Motivation: The Popularity Gap}
+
+The high-level motivation for AdaPop stems from the observation that Large Language Models (LLMs) encode popular and rare facts with vastly different "memory inertia." Popular facts, frequently encountered during pre-training, are deeply embedded and require a more aggressive and precise removal mechanism. Conversely, rare facts are more fragile and susceptible to catastrophic forgetting of neighboring knowledge if treated with the same force.
+
+AdaPop accounts for this by employing an \textbf{exponential token weighting} scheme. The core idea is that if a fact has high popularity, we remove the knowledge more aggressively. This is achieved through a popularity-dependent exponent that scales the unlearning signal, ensuring that the gradient update is tailored to the "physics" of how the fact is stored in the model's weights.
+
+\subsection{Motivation and Setting}
+
+Let $\mathcal{F}=\{(x_i,y_i,s_i)\}_{i=1}^{N_F}$ be the \emph{forget} set, where each entry consists of a question-answer pair $(x_i, y_i)$ and a corresponding popularity score $s_i$ derived from a global metric such as \texttt{pop\_sum}. Let $\mathcal{R}=\{(x_j,y_j)\}_{j=1}^{N_R}$ be the \emph{retain} set. We consider an autoregressive model $q_\theta$ where the conditional probability of a token $y_t$ given its prefix is $q_\theta(y_t \mid x, y_{<t})$. For any token position $t$ in sequence $i$, we define the negative log-likelihood (NLL) and the model's confidence as:
+\begin{align}
+    \ell_{i,t}(\theta) &= -\log q_\theta(y_{i,t} \mid x_i, y_{i,<t}) \\
+    p_{i,t}(\theta) &= \exp(-\ell_{i,t}(\theta))
+\end{align}
+The sets $\Omega_{\mathcal{F}}$ and $\Omega_{\mathcal{R}}$ represent the indices of valid tokens not masked by padding or special tokens. The objective of AdaPop is to increase the loss on $\mathcal{F}$ while minimizing the drift on $\mathcal{R}$ through a weighted gradient ascent objective where the retain coefficient $\alpha$ is dynamically adjusted.
+
+\subsection{Popularity-Aware Forget Objective}
+
+A core contribution of AdaPop is the use of a \textbf{popularity-dependent exponent} $\beta_i$ to scale the unlearning signal. Each sample $i$ in the forget set is assigned an exponent based on the popularity score $s_i$ of the corresponding fact. We generalize this relationship using a power-law formula:
+\begin{equation}
+    \beta_i = a \cdot s_i^{-b},
+\end{equation}
+where $a$ and $b$ are coefficients that depend on the specific popularity proxy labeling used (see Appendix for details). 
+
+The intuition behind this "physics" of the process is that $\beta(s)$ must be a monotonically decreasing function. As popularity $s_i$ increases, $\beta_i$ decreases, which "flattens" the unlearning signal by raising the model's confidence to a smaller power. This ensures that even tokens with moderate confidence contribute significantly to the gradient ascent for popular facts. For rare facts, a larger $\beta_i$ "sharpens" the update, concentrating the unlearning force only on the most certain tokens to prevent unnecessary drift. To ensure training stability, $\beta_i$ is typically clipped to a stable interval (e.g., $[0.05, 2.0]$).
+
+The final unlearning weight $w_{i,t}$ is governed by the detached token weight:
+\[
+w_{i,t} = \left(\mathrm{stopgrad}(p_{i,t}(\theta))\right)^{\beta_i}.
+\]
+The final forget loss is defined as:
+\[
+L_f(\theta) = -\frac{1}{|\Omega_{\mathcal{F}}|} \sum_{(i,t) \in \Omega_{\mathcal{F}}} w_{i,t} \ell_{i,t}(\theta).
+\]
+
+\subsection{Unlearning Intuition and Implementation}
+
+To clarify the implementation mechanism: the exponential weighting is applied during the \textbf{training phase} (gradient ascent) and not during inference/generation. Specifically, the weight $w_{i,t}$ is calculated for each token in the \textbf{answer} ($y_i$), while tokens in the question/prompt ($x_i$) are typically masked and do not contribute to the loss calculation. This ensures that the model specifically unlearns the target fact (the relation) without degrading its ability to process the question.
+
+\subsection{Dual-Ascent and Auto-Balancing}
+
+To eliminate the need for manual tuning of the retain influence coefficient, AdaPop employs an automated \textbf{auto-balancing} controller. By balancing the retain set influence at each epoch, we remove the burden of finding the "magic" $\alpha$ value that plagues other algorithms. 
+
+\paragraph{Epoch-Level Dual Update.} 
+AdaPop treats $\alpha$ as a dual variable to satisfy the constraint $\delta_k \le \varepsilon$, where $\delta_k$ is the one-sided relative drift of the retain loss $R_k$ at epoch $k$:
+\[
+\delta_k = \max\left( 0, \frac{R_k - R_{\mathrm{ref}}}{\max(R_{\mathrm{ref}}, \epsilon_0)} \right).
+\]
+Let $\alpha_k = \alpha_0 + \lambda_k$. The dual variable $\lambda$ is updated via projected gradient ascent:
+\begin{align}
+    \lambda_{k+1} &= \Pi_{[0, \lambda_{\max}]}\left( \lambda_k + \eta_\lambda (\delta_k - \varepsilon) \right) \\
+    \alpha_{k+1} &= \Pi_{[0, \gamma_k]}(\alpha_0 + \lambda_{k+1})
+\end{align}
+
+\paragraph{Per-Step Popularity Modulation.} 
+Beyond epoch-level updates, AdaPop employs fine-grained control to protect the model from sudden collapse. Since batches containing popular facts (small $\beta$) generate aggressive unlearning signals, we proactively scale the effective retain coefficient $\alpha_{\mathrm{eff}}$ for each batch:
+\[
+\text{scale} = \frac{1}{1 + \text{gain} \cdot \bar{\beta}}
+\]
+This scaling strengthens the "shield" of the retain loss in real-time when the model is performing the loud, wide updates required for popular facts, ensuring that the unlearning process does not cause immediate collateral damage to general knowledge.
+
+
+
+%% take from other/ada_pop.tex
+
+% In this section, we detail the \textbf{AdaPop} (Adaptive Popularity) framework. Our approach moves beyond local model confidence by integrating a global popularity metric and an automated dual-ascent controller to maintain the balance between knowledge erasure and model utility.
+
+% \subsection{Motivation and Setting}
+
+% Let $\mathcal{F}=\{(x_i,y_i,s_i)\}_{i=1}^{N_F}$ be the \emph{forget} set, where each entry consists of a question-answer pair $(x_i, y_i)$ and a corresponding popularity score $s_i$ derived from a global metric such as \texttt{pop\_sum}. Let $\mathcal{R}=\{(x_j,y_j)\}_{j=1}^{N_R}$ be the \emph{retain} set used to preserve general model performance. We consider an autoregressive model $q_\theta$ where the conditional probability of a token $y_t$ given its prefix is $q_\theta(y_t \mid x, y_{<t})$. For any token position $t$ in sequence $i$, we define the negative log-likelihood (NLL) and the model's confidence as:
+% \begin{align}
+%     \ell_{i,t}(\theta) &= -\log q_\theta(y_{i,t} \mid x_i, y_{i,<t}) \\
+%     p_{i,t}(\theta) &= \exp(-\ell_{i,t}(\theta))
+% \end{align}
+% The sets $\Omega_{\mathcal{F}}$ and $\Omega_{\mathcal{R}}$ represent the indices of valid tokens not masked by padding or special tokens. The objective of AdaPop is to increase the loss on $\mathcal{F}$ while minimizing the drift on $\mathcal{R}$ through a weighted gradient ascent objective where the retain coefficient $\alpha$ is dynamically adjusted.
+
+% \subsection{Popularity-Aware Forget Objective}
+
+% A core contribution of AdaPop is the use of a \textbf{popularity-dependent exponent} $\beta_i$ to scale the unlearning signal. Each sample $i$ in the forget set is assigned an exponent based on the popularity score $s_i$ of the corresponding fact. The exponent is defined as a general function of popularity:
+% \[
+% \beta_i = f(s_i).
+% \]
+% In practice, this function is often defined empirically to control the strength of the update. For example, one possible form used in our implementation is:
+% \[
+% \beta_i = 58.7 s_i^{-0.796},
+% \]
+% where the constant $58.7$ and the exponent $-0.796$ were chosen empirically to balance the influence across the popularity spectrum. To ensure training stability and prevent gradient explosion, $\beta_i$ is typically clipped to a stable interval (e.g., $[0.05, 2.0]$). Alternatively, a constant exponent $\beta_i = \beta_{\mathrm{const}}$ may be used to treat all facts with equal importance.
+
+
+
+% The relationship between popularity and the final unlearning weight $w_{i,t}$ is governed by the detached token weight:
+% \[
+% w_{i,t} = \left(\mathrm{stopgrad}(p_{i,t}(\theta))\right)^{\beta_i}.
+% \]
+% This formulation creates a critical inverse relationship. Popular facts (high $s_i$) result in a smaller $\beta_i$, which amplifies and "flattens" the unlearning signal. This ensures that even tokens with moderate confidence contribute significantly to the gradient ascent, overcoming the strong "memory inertia" of deeply embedded knowledge. Conversely, rare facts (low $s_i$) receive a larger exponent, which "sharpens" the update to concentrate only on the most certain tokens, preventing unnecessary drift on niche information. The final forget loss is defined as:
+% \[
+% L_f(\theta) = -\frac{1}{|\Omega_{\mathcal{F}}|} \sum_{(i,t) \in \Omega_{\mathcal{F}}} w_{i,t} \ell_{i,t}(\theta).
+% \]
+
+% \subsection{Dual-Ascent and Fine-Grained Retain Control}
+
+% To maintain stability without manual hyperparameter tuning, AdaPop employs a two-tier control system for the retain coefficient $\alpha$.
+
+% \paragraph{Epoch-Level Dual Update.} 
+% AdaPop treats $\alpha$ as a dual variable to satisfy the constraint $\delta_k \le \varepsilon$, where $\delta_k$ is the one-sided relative drift of the retain loss $R_k$ at epoch $k$:
+% \[
+% \delta_k = \max\left( 0, \frac{R_k - R_{\mathrm{ref}}}{\max(R_{\mathrm{ref}}, \epsilon_0)} \right).
+% \]
+% Let $\alpha_k = \alpha_0 + \lambda_k$. The dual variable $\lambda$ is updated via projected gradient ascent:
+% \begin{align}
+%     \lambda_{k+1} &= \Pi_{[0, \lambda_{\max}]}\left( \lambda_k + \eta_\lambda (\delta_k - \varepsilon) \right) \\
+%     \alpha_{k+1} &= \Pi_{[0, \gamma_k]}(\alpha_0 + \lambda_{k+1})
+% \end{align}
+
+% \paragraph{Per-Step Popularity Modulation.} 
+% Beyond epoch-level updates, AdaPop employs fine-grained control to protect the model from sudden collapse. Since batches containing popular facts (small $\beta$) generate aggressive unlearning signals, we proactively scale the effective retain coefficient $\alpha_{\mathrm{eff}}$ for each batch:
+% \[
+% \text{scale} = \frac{1}{1 + \text{gain} \cdot \bar{\beta}}
+% \]
+% This scaling strengthens the "shield" of the retain loss in real-time when the model is performing the loud, wide updates required for popular facts, ensuring that the unlearning process does not cause immediate collateral damage to general knowledge.

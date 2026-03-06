@@ -26,7 +26,7 @@ fi
 experiment="unlearn/duet/grad_ascent_lora.yaml"
 trainer="NPO"
 
-output_root="${repo_root}/saves/unlearn/duet/npo"
+output_root="${repo_root}/saves/unlearn/duet/NEW_BUGFIX_npo"
 mkdir -p "${output_root}"
 
 set_forget_retain_splits

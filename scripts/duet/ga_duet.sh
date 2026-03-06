@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+
+# TODO REMOVE CUDA 
+# export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-1}
+
 script_dir=$(dirname "$(realpath "$0")")
 repo_root=$(realpath "${script_dir}/../..")
 source "${script_dir}/_splits.sh"
@@ -26,7 +30,9 @@ fi
 experiment="unlearn/duet/grad_ascent_lora.yaml"
 trainer="GradAscent"
 
-output_root="${repo_root}/saves/unlearn/duet/ga"
+
+# TODO REMOVE NAME FOLDER
+output_root="${repo_root}/saves/unlearn/duet/NEW_BUGFIX_ga"
 mkdir -p "${output_root}"
 
 set_forget_retain_splits

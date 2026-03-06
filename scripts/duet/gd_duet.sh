@@ -26,7 +26,7 @@ fi
 experiment="unlearn/duet/grad_ascent_lora.yaml"
 trainer="GradDiff"
 
-output_root="${repo_root}/saves/unlearn/duet/gd"
+output_root="${repo_root}/saves/unlearn/duet/NEW_BUGFIX_gd"
 mkdir -p "${output_root}"
 
 set_forget_retain_splits

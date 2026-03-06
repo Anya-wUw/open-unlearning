@@ -17,7 +17,7 @@ echo "[rwku][GD] Using Hugging Face base checkpoint ${base_model_path}"
 experiment="unlearn/rwku/grad_diff_lora.yaml"
 trainer="GradDiff"
 
-output_root="${repo_root}/saves/unlearn/rwku/gd"
+output_root="${repo_root}/saves/unlearn/rwku/NEW_BUGFIX_gd"
 mkdir -p "${output_root}"
 
 forget_split="forget_level2"
@@ -27,7 +27,8 @@ per_device_train_batch_size=${PER_DEVICE_TRAIN_BS:-1}
 gradient_accumulation_steps=${GRAD_ACCUM:-32}
 num_train_epochs=${NUM_EPOCHS:-5}
 
-raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4}"
+# raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4}"
+export LRS=${LRS:-"1e-6 5e-6 1e-5 5e-5 1e-4"} 
 raw_lrs="${raw_lrs//,/ }"
 raw_lrs="${raw_lrs//\"/}"
 raw_lrs="${raw_lrs//\'/}"

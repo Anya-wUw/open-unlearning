@@ -17,7 +17,7 @@ echo "[rwku][ada_pop] Using Hugging Face base checkpoint ${base_model_path}"
 experiment="unlearn/rwku/wga_lora.yaml"
 trainer="AdaPop"
 
-output_root="${repo_root}/saves/unlearn/rwku/ada_pop"
+output_root="${repo_root}/saves/unlearn/rwku/NEW_BUGFIX_ada_pop"
 mkdir -p "${output_root}"
 
 forget_split="forget_level2"
@@ -27,7 +27,8 @@ per_device_train_batch_size=${PER_DEVICE_TRAIN_BS:-1}
 gradient_accumulation_steps=${GRAD_ACCUM:-32}
 num_train_epochs=${NUM_EPOCHS:-5}
 
-raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4 1e-3}"
+# raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4 1e-3}"
+export LRS=${LRS:-"1e-6 5e-6 1e-5 5e-5 1e-4"} 
 raw_lrs="${raw_lrs//,/ }"
 raw_lrs="${raw_lrs//\"/}"
 raw_lrs="${raw_lrs//\'/}"

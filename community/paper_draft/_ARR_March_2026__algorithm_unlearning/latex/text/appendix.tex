@@ -1,0 +1,73 @@
+\section{Derivation of AdaPop Popularity Parameters}
+
+The power-law relationship $\beta_i = a \cdot s_i^{-b}$ is designed to map the wide dynamic range of popularity scores to a stable interval suitable for gradient updates. Since the gap between rare and popular entities typically spans 2--3 orders of magnitude in most popularity proxy metrics, the coefficients $a$ and $b$ must be tuned to ensure that unlearning remains effective yet controlled.
+
+Specifically, we aim for "rare" entities (low $s_i$) to scale toward $\beta \approx 2.0$ to sharpen the update, while "popular" entities (high $s_i$) should scale toward $\beta \approx 0.05$ to flatten the update and overcome memory inertia.
+
+\paragraph{Wikidata Proxy.} When the popularity proxy labeling is based on Wikidata (e.g., number of site links or claims), we empirically find the following coefficients to be optimal:
+\begin{itemize}
+    \item $a = 58.7$
+    \item $b = 0.796$
+\end{itemize}
+
+These parameters may vary slightly depending on the specific range and distribution of the popularity proxy metric used (e.g., \texttt{pop\_sum} vs. \texttt{pagerank}). 
+
+\paragraph{Parameter Derivation.} 
+[Placeholder: Formal derivation of these coefficients based on the desired $\beta$ range and the cumulative distribution function (CDF) of the popularity scores.]
+
+\section{Detailed UNLamb Results}
+
+%% TALES OF 1E-3
+% --- Table 1: Llama-3.1-8B-Instruct ---
+\begin{table*}[h]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|l|Y|Y|Y|Y|Y|Y|Y|Y|}
+\hline
+\multirow{2}{*}{\textbf{Algorithm}} & \multicolumn{4}{c|}{\textbf{Popular Facts}} & \multicolumn{4}{c|}{\textbf{Rare Facts}} \\ \cline{2-9}
+& \textbf{R.F.} $\downarrow$ & \textbf{R.R.} $\uparrow$ & \textbf{C.F.} $\downarrow$ & \textbf{C.R.} $\uparrow$ & \textbf{R.F.} $\downarrow$ & \textbf{R.R.} $\uparrow$ & \textbf{C.F.} $\downarrow$ & \textbf{C.R.} $\uparrow$ \\ \hline
+\rowcolor{cyan!15} \textbf{Orig} & 0.820 & 0.827 & 0.491 & 0.555 & 0.821 & 0.827 & 0.518 & 0.555 \\ \hline
+AdaPop & 0.274 & 0.889 & 0.047 & 0.866 & 0.253 & 0.902 & 0.189 & 0.868 \\ \hline
+\rowcolor{gray!10} GA & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\ \hline
+GD & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.018 & 0.000 & 0.012 \\ \hline
+\rowcolor{gray!10} NPO & 0.363 & 0.881 & 0.092 & 0.873 & 0.346 & 0.876 & 0.174 & 0.809 \\ \hline
+WGA & 0.239 & 0.902 & 0.159 & 0.900 & 0.275 & 0.914 & 0.200 & 0.871 \\ \hline
+\end{tabularx}
+\caption{Detailed UNLamb unlearning performance: Llama-3.1-8B-Instruct.}
+\end{table*}
+
+% --- Table 2: Qwen2.5-7B-Instruct ---
+\begin{table*}[h]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|l|Y|Y|Y|Y|Y|Y|Y|Y|}
+\hline
+\multirow{2}{*}{\textbf{Algorithm}} & \multicolumn{4}{c|}{\textbf{Popular Facts}} & \multicolumn{4}{c|}{\textbf{Rare Facts}} \\ \cline{2-9}
+& \textbf{R.F.} $\downarrow$ & \textbf{R.R.} $\uparrow$ & \textbf{C.F.} $\downarrow$ & \textbf{C.R.} $\uparrow$ & \textbf{R.F.} $\downarrow$ & \textbf{R.R.} $\uparrow$ & \textbf{C.F.} $\downarrow$ & \textbf{C.R.} $\uparrow$ \\ \hline
+\rowcolor{cyan!15} \textbf{Orig} & 0.591 & 0.153 & 0.522 & 0.127 & 0.078 & 0.153 & 0.047 & 0.127 \\ \hline
+AdaPop & 0.176 & 0.379 & 0.022 & 0.359 & 0.041 & 0.418 & 0.039 & 0.415 \\ \hline
+\rowcolor{gray!10} GA & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\ \hline
+GD & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.007 & 0.000 & 0.006 \\ \hline
+\rowcolor{gray!10} NPO & 0.233 & 0.314 & 0.203 & 0.306 & 0.012 & 0.313 & 0.011 & 0.308 \\ \hline
+WGA & 0.460 & 0.389 & 0.435 & 0.383 & 0.046 & 0.524 & 0.044 & 0.522 \\ \hline
+\end{tabularx}
+\caption{Detailed UNLamb unlearning performance: Qwen2.5-7B-Instruct.}
+\end{table*}
+
+% --- Table 3: Gemma-7B-it ---
+\begin{table*}[h]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|l|Y|Y|Y|Y|Y|Y|Y|Y|}
+\hline
+\multirow{2}{*}{\textbf{Algorithm}} & \multicolumn{4}{c|}{\textbf{Popular Facts}} & \multicolumn{4}{c|}{\textbf{Rare Facts}} \\ \cline{2-9}
+& \textbf{R.F.} $\downarrow$ & \textbf{R.R.} $\uparrow$ & \textbf{C.F.} $\downarrow$ & \textbf{C.R.} $\uparrow$ & \textbf{R.F.} $\downarrow$ & \textbf{R.R.} $\uparrow$ & \textbf{C.F.} $\downarrow$ & \textbf{C.R.} $\uparrow$ \\ \hline
+\rowcolor{cyan!15} \textbf{Orig} & 0.683 & 0.283 & 0.087 & 0.089 & 0.156 & 0.283 & 0.044 & 0.089 \\ \hline
+AdaPop & 0.244 & 0.422 & 0.057 & 0.383 & 0.040 & 0.459 & 0.030 & 0.444 \\ \hline
+\rowcolor{gray!10} GA & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\ \hline
+GD & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.006 & 0.000 & 0.000 \\ \hline
+\rowcolor{gray!10} NPO & 0.110 & 0.201 & 0.014 & 0.149 & 0.010 & 0.160 & 0.005 & 0.138 \\ \hline
+WGA & 0.288 & 0.429 & 0.110 & 0.397 & 0.030 & 0.454 & 0.024 & 0.450 \\ \hline
+\end{tabularx}
+\caption{Detailed UNLamb unlearning performance: Gemma-7B-it.}
+\end{table*}

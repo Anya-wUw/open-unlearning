@@ -8,7 +8,7 @@ repo_root=$(realpath "${script_dir}/../..")
 export MASTER_PORT=$(python -c "import socket; s=socket.socket(); s.bind(('', 0)); print(s.getsockname()[1]); s.close()")
 echo "Master Port: $MASTER_PORT"
 
-base_model="${BASE_MODEL:-Llama-3.1-8B}"
+base_model="${BASE_MODEL:-Llama-3.1-8B-Instruct}"
 lora_model="${MODEL_CONFIG:-${base_model}-lora}"
 base_model_path="${HF_BASE_MODEL_PATH:-meta-llama/${base_model}}"
 
@@ -27,7 +27,8 @@ per_device_train_batch_size=${PER_DEVICE_TRAIN_BS:-1}
 gradient_accumulation_steps=${GRAD_ACCUM:-32}
 num_train_epochs=${NUM_EPOCHS:-5}
 
-raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4}"
+# raw_lrs="${LRS:-1e-5 5e-5 1e-4 5e-4}"
+export LRS=${LRS:-"1e-6 5e-6 1e-5 5e-5 1e-4"} 
 raw_lrs="${raw_lrs//,/ }"
 raw_lrs="${raw_lrs//\"/}"
 raw_lrs="${raw_lrs//\'/}"
