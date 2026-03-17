@@ -20,6 +20,11 @@ def main(cfg: DictConfig):
     assert model_cfg is not None, "Invalid model yaml passed in train config."
     model, tokenizer = get_model(model_cfg)
 
+    # For PEFT models with gradient checkpointing, enable input gradients so
+    # that LoRA parameters inside checkpointed transformer blocks receive gradients.
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
+
     # Load Dataset
     data_cfg = cfg.data
     data = get_data(
@@ -60,6 +65,12 @@ def main(cfg: DictConfig):
         trainer.train()
         trainer.save_state()
         trainer.save_model(trainer_args.output_dir)
+        if trainer.is_world_process_zero() and hasattr(model, "peft_config"):
+            import os
+
+            adapter_cfg = os.path.join(trainer_args.output_dir, "adapter_config.json")
+            if not os.path.exists(adapter_cfg):
+                model.save_pretrained(trainer_args.output_dir)
 
     if trainer_args.do_eval:
         trainer.evaluate(metric_key_prefix="eval")

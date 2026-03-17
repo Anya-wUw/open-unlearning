@@ -1,0 +1,6 @@
+CUDA_VISIBLE_DEVICES=0 bash scripts/duet/run_all_new_methods_llama.sh
+CUDA_VISIBLE_DEVICES=0 bash scripts/rwku/run_all_new_methods_llama.sh
+CUDA_VISIBLE_DEVICES=0 bash scripts/rwku/run_all_new_methods_gemma7b.sh
+CUDA_VISIBLE_DEVICES=0 bash scripts/duet/run_all_new_methods_qwen25_7b.sh
+CUDA_VISIBLE_DEVICES=0 bash scripts/duet/run_all_new_methods_gemma7b.sh
+CUDA_VISIBLE_DEVICES=0 bash scripts/rwku/run_all_new_methods_qwen25_7b.sh
