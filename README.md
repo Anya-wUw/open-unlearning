@@ -278,26 +278,7 @@ img/                             # Figures for this README
 
 ## Citation
 
-If you use AdaPop in your research, please cite:
-
-```bibtex
-@article{borisiuk2026adapop,
-  title     = {{AdaPop}: Popularity-Aware {LLM} Unlearning},
-  author    = {Borisiuk, Anton},
-  year      = {2026}
-}
-```
-
-This work builds on the OpenUnlearning framework. Please also cite:
-
-```bibtex
-@article{openunlearning2025,
-  title   = {{OpenUnlearning}: Accelerating {LLM} Unlearning via Unified Benchmarking of Methods and Metrics},
-  author  = {Dorna, Vineeth and Mekala, Anmol and Zhao, Wenlong and McCallum, Andrew and Lipton, Zachary C and Kolter, J Zico and Maini, Pratyush},
-  journal = {arXiv preprint arXiv:2506.12618},
-  year    = {2025}
-}
-```
+Preprint of this paper now in process and will appear later
 
 ---
 
