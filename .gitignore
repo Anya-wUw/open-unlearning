@@ -17,6 +17,9 @@ data/
 !*/data/ 
 evals/
 !*/evals/  
+paraphrase_forget/
+community/paper_draft/
+Benchmark_Evaluation/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -25,6 +28,14 @@ eval_logs/
 eval_dumps/
 # C extensions
 *.so
+
+
+GEMINI.md
+CLAUDE.md
+AGENTS.md
+
+# png 
+*.png
 
 # Distribution / packaging
 .Python
@@ -102,6 +113,9 @@ target/
 # IPython
 profile_default/
 ipython_config.py
+
+
+./community/paper_draft/
 
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
@@ -184,5 +198,6 @@ cython_debug/
 
 # Local agent notes and local analysis scripts/notebooks (ignore)
 AGENTS.md
+GEMINI.md
 experiments_visualization.ipynb
 scripts/recalc_duet_rouge_recall.py
