@@ -1,0 +1,56 @@
+\section{Discussion}
+% краткие выводы-ответы на рисерч вопросы
+    % \item[\textbf{RQ1: Scale Effects.}]  
+    %  How do model size (1B, 3B, 8B) and the proportion of forgotten data ($p=5\%,10\%,15\%$) jointly affect the removal of rare and popular facts?
+
+    %  \item[\textbf{RQ2: Algorithmic Robustness.}]  
+    % How do representative unlearning methods (\textsc{GA}, \textsc{GD}, \textsc{NPO}, \textsc{RMU}) differ in leakage and collateral damage across the popularity spectrum?
+
+    %  \item[\textbf{RQ3: Popularity vs.\ Forgettability.}]  
+    % How much harder is it to erase popular facts than rare ones under identical unlearning settings?
+
+    
+% \subsection{Insights and Practical Takeaways}
+% TODO
+
+Below we summarize the answers to the 3 research questions raised in Section \ref{sec:rq} and highlight practical conclusions.
+
+\paragraph{RQ1: Scale Effects.}  
+Based on Table~\ref{tab:size_unlearning}, model size proves importance for unlearning stability. Smaller models (1B, 3B) exhibit instability: they struggle to reliably encode even rare facts during fine-tuning and are highly susceptible to catastrophic degradation when unlearning. In contrast, the 8B model retains knowledge more robustly, allowing rare-fact removal with relatively limited collateral damage. Removing popular facts, however, induces severe instability in the larger model—especially at higher forget-set fractions—often manifesting as collapse or incoherent generation. The 10\% split consistently yields the most effective trade-off, 5\% is too weak to forget effectively, while 15\% leads to catastrophic forgetting (See Table \ref{tab:split_comparison}).
+
+\begin{tcolorbox}[colback=gray!10, colframe=black!50, 
+  boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt]
+\textbf{Takeaway 1:} Machine unlearning is most effective on larger models (at least 8B). \textbf{A forget set of $\sim$10\% yields optimal and more stable results}; smaller sets are insufficient, while larger ones tend to cause unstable unlearning and require more careful parameter tuning.
+\end{tcolorbox}
+
+\paragraph{RQ2: Algorithmic Robustness.}  
+Our analysis reveals that no single unlearning algorithm is universally optimal; instead, the best method depends critically on both the forget-set size and the popularity of the target facts. With a 10\% forget set (See Table \ref{tab:size_unlearning}, \ref{tab:split_comparison} and Figure \ref{fig:mu_modes}), Gradient Ascent (GA) is most effective for rare facts, whereas Negative Preference Optimization (NPO) offers the best trade-off for popular facts, balancing forgetting efficacy and preservation of general knowledge. This landscape shifts at the 15\% split (See Table \ref{tab:popular_vs_rare_15pct}, \ref{tab:split_comparison}): Gradient Difference (GD) becomes the preferred approach for rare facts, while GA is superior for popular ones. These observations reflect a complex interplay between each algorithm’s inductive biases and the specific properties of the unlearning target. Across all configurations, the learning rate emerges as the dominant hyperparameter—its careful tuning is essential to avoid the extremes of ineffective unlearning or catastrophic forgetting.
+
+
+\begin{tcolorbox}[colback=gray!10, colframe=black!50, 
+  boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt]
+\textbf{Takeaway 2:} \textbf{Effective unlearning depends on fact popularity and forget-set size}: for 10\%, use GradAscent on rare and NPO on popular; for 15\%, use GradDiff on rare and GradAscent on popular. \textbf{Learning rate is the key parameter}, most affecting unlearning, and \textbf{two epochs strike the best balance} between forgetting and stability.
+\end{tcolorbox}
+
+\paragraph{RQ3: Popularity vs.\ Forgettability.}  
+Our experiments and the considered RQ1 and RQ2 confirm that popular facts are significantly more difficult to forget. This effect is not only evident across all investigated algorithms but also becomes stronger as the size of the forget split increases (RQ2). Popular knowledge is deeply embedded in the model's parameters due to its high frequency and diverse contexts in the training data, which makes its removal risky and prone to catastrophic forgetting (RQ1). In contrast, rare facts are more isolated, and thus can be removed with fewer side effects.
+
+\begin{tcolorbox}[colback=gray!10, colframe=black!50, 
+  boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt]
+\textbf{Takeaway 3:} Fact popularity significantly affects unlearning difficulty. \textbf{Rare facts are easier to forget cleanly; popular facts tend to catastrophic forgetting }unless handled carefully.
+\end{tcolorbox}
+
+
+
+
+%% черновик
+% Опираясь на таблицу 2 можно увидеть, что даже с fine-tuning в 5 эпох 1B и 3B моделям тяжело запомнить датасет с редкими сущностями, однако хоть с запоминанием популярных сущностей модель справляется в разы лучше, когда применяется анлернинг становится очень нестабильным и быстро уходит в катастрофическое забывание. Но если посмотреть на тенденцию, то по мере увеличения размера модели - увеличивается и стабильность ее знаний после анлернинга. Отвечая на RQ1 о взаимосвязи размера модели и качества забывания редких/популярных сущностей, сделать вывод, что для моделей маленького размера, таких как 1В и 3В - забывание редких/популярных сущностей не содержит большую разницу, но если говорить про 8В модель, то хорошо видна разница на алгоритмах GradAscent и NPO: при забывании популярных сущностей, модель гораздо быстрее ломается и случайется катастрафическое забывание знаний; для редких сущностей этот феномен тоже виден, но он не такой сильный, как при анлернинге популярных сущностей, более наглядно это можно увидеть на фигуре 1.
+% Takeaway 1 (RQ1) Применять анлернинг и учитывать популярность фактов на моделях семейства Llama-3 следует на больших моделях, размером не менее 8B
+
+% Проанализировав таблицу 1 можно заметить тенденцию: при одинаковых параметрах анлернинга (в частности lr=3e-5), можно заметить, что при забывании 5% датасета анлернинг неэффективен и модель ничего не забывает, при забывании 15% датасета модель наоборот забывает очень много (на GradAscent модель ломается совсем и генерирует случайные токнены), а при забывании 10% датасета - это хоть и не идеальный, но самый оптимальный размер датасета. Говоря о корреляции забывания редких и популярных сущностей и размера датасета можно заметить, что оптимальные размеры датасетов у обоих сплитов находятся в 10%, однако после забывания популярных сущностей на 8В модели (как было подчёркнуто уже в абзаце выше) модель сильнее забыла retain и валидационный датасет, таким образом, отвечая на вторую часть RQ1 о влиянии размера датасета на анлернинг разной популярности, ответ: размер датасета важен, но не сильно влияет на то забываем мы редкие сущности или популярные, а скорее влияет на общую эффективность анлернинга в целом
+% Takeaway 2 (RQ1) Не следует подавать для алгоритмов анлернинга слишком маленькие датасеты (<5% forget set, ~600 sampales) или слишком большие  (>15% forget set, ~1.75k sampales), самый оптимальный размер в диапазоне около 10%, но стоит учесть что для анлернинга популярных фактов нужно ~2-3% меньше датасета, чем для анлернинга редких фактов
+
+% Рассмотрев 2 таблицы отвечаем на вопрос RQ2: все 4 анлернинг метода не достаточно эффективны и требуют большого количества времени на подбор гиперпараметров: GA и NPO являются одними из самых эффективных: в GA не нужно подбирать дополнительных параметров, а параметры NPO подошли довольно быстро, однако с GD ситуация сложнее: при ламбда (регуляризация того сколько ретеин сета при анлернинге мы хотим не забывать) > 0.3 алгоритм не забывает информацию и метрики держутся около тех что были после FT модели, а при параметрах <0.3 его тенденция близка к GradAscent, алгоритм RMU имеет очень много параметров и не смотря на долгий подбор паметров, этот алгоритм ведет себя довольно непредсказуемо. Также стоит отметить что в зависимости от популярности фактов, стоит подбирать свои параметры анлернинг алгоритмов, как видно на таблицах 1 и 2. Исходя их этого, открывается новая потребность и необходимость разработки нового алгоритма анлернинга, учитывающего популярность фактов и динамически подстраивающегося под этот популярность фактов в данных.
+% Takeaway 3 (RQ2) В зависимости от того делаем мы анлернинг редких фактов или популярных, следует подбирать анлеренинг параметры к каждому случаю индивидуально. Начать следует с подбора lr у алгоритмов GA, GD, NPO; Обычно 2 эпох вполне достаточно для оптимального анлернинга, 1й может быть недостаточно, а в некоторых случаях 3 уже очень много. Далее можно подбирать параметры самих алгоритмов. 
+
+% Резюмируя все выше сказанное, ответим на заключительный RQ3: разница при анлернинге редких и популярных сущностей есть и эта разница видна в различных аспектах: начиная от размера модели, заканчивая тонкой настройкой каждого алгоритма под сплит популярных/редких фактов.

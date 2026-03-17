@@ -4,10 +4,10 @@ set -euo pipefail
 
 script_dir=$(dirname "$(realpath "$0")")
 
-export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-1}
 # export LRS=${LRS:-"1e-5 5e-5 1e-4 5e-4 1e-3"} 
 # export LRS=${LRS:-"1e-6 5e-6 1e-5 5e-5 1e-4"} 
-export LRS=${LRS:-"1e-6 1e-5 1e-4"} 
+export LRS=${LRS:-"1e-6 5e-6 1e-5 4e-5 5e-5 1e-4 5e-4"} 
 export BASE_MODEL="gemma-7b-it"
 export MODEL_CONFIG="gemma-7b-it-lora"
 export HF_BASE_MODEL_PATH="google/gemma-7b-it"

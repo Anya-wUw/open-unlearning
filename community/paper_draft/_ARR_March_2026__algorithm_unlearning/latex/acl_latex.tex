@@ -37,6 +37,7 @@
 \usepackage{bm}           % For bold math symbols if needed
 \usepackage{algorithm}    % For the Algorithm environment
 \usepackage{algorithmic}  % For the algorithmic steps (IF, FOR, etc.)
+\usepackage{float}        % For [H] exact figure placement
 
 % If the title and author information does not fit in the area allocated, uncomment the following
 %
@@ -54,7 +55,31 @@
 \newcolumntype{Y}{>{\centering\arraybackslash}X}
 
 
-\title{AdaPop blablabla}
+%% для аппендикса, раздел примеры
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor}
+\usepackage[skins,breakable]{tcolorbox}
+\definecolor{dustyblue}{HTML}{728FA5}
+% Настраиваем красивую рамку для примеров
+\newtcolorbox{genbox}[1][]{
+  enhanced,
+  breakable,
+  colback=dustyblue!10, % Светлая пыльно-синяя заливка фона
+  colframe=dustyblue!90!black, % Темная пыльно-синяя рамка
+  boxrule=0.5mm,
+  arc=3mm,
+  left=3mm, right=3mm, top=2mm, bottom=2mm,
+  fonttitle=\bfseries\sffamily,
+  coltitle=white,
+  title={#1},
+  shadow={2mm}{-1mm}{0mm}{black!20}
+}
+\newcommand{\loopmark}{\textcolor{dustyblue!80!black}{\textit{[collapsed loop]}}}
+
+
+% \title{AdaPop: Adaptive Popularity improves  Unlearning in LLMs}
+\title{The More Popular, The Harder to Forget: Adaptive Popularity for LLM Unlearning}
 
 % Author information can be set in various styles:
 % For several authors from the same institution:
@@ -134,42 +159,58 @@
 
 
 
+% \begin{abstract}
+% LLM unlearning algorithms treat all facts in the forget set as equally hard to erase, ignoring that popular facts are encountered far more often during pretraining and are could be far more resistant to erasure. Existing gradient-based methods weight updates by per-token model confidence, a local signal that conflates surface fluency with parametric memorisation depth. We present \textbf{AdaPop} (Adaptive Popularity), which scales the unlearning signal by a popularity-dependent exponent derived from external knowledge bases (e.g., Wikidata), %\texttt{pop\_sum},
+% and automates the forget-retain balance via a dual-ascent controller. Evaluated against a battery of SOTA unlearning methods, such as Weighted Gradient Ascent (WGA), %GA, GD, NPO, and WGA
+% on three model families and two real-world benchmarks, AdaPop reduces forget ROUGE-L below $0.051$ while retaining ROUGE-L above $0.855$, and limits popular-paraphrase forget ROUGE-L below $0.060$ (a $3.5\times$ improvement over WGA). Internal metrics confirm deeper parametric erasure ($\Delta$Rank $+53{,}760$ vs.\ WGA $-3{,}714$) with MMLU preserved within $0.05$ of the pre-unlearning checkpoint.
+% \end{abstract}
+
 \begin{abstract}
-TODO Abstract 
+%LLM unlearning algorithms treat all facts in the forget set as equally hard to erase, ignoring that popular facts are encountered far more often during pretraining and are consequently far more resistant to removal. Existing gradient-based unlearning techniques weight updates by per-token model confidence, a local signal that conflates surface fluency with parametric memorisation depth. We present \textbf{AdaPop} (Adaptive Popularity), which scales the unlearning signal by a popularity-dependent exponent derived from external knowledge bases, and automates the forget-retain balance via a dual-ascent controller. Evaluated against SOTA unlearning algorithms on three LLM families and two benchmarks DUET, RWKU, \textbf{AdaPop} consistently outperforms all non-collapsing baselines on paraphrase-generalised erasure and maintains a reliable forget-retain tradeoff across all model families. %Competing methods are at best narrowly competitive on surface metrics for one of three models and do not generalise to paraphrase evaluation. 
+
+LLM unlearning techniques typically treat every example in a forget set as equally easy or hard to remove, even though frequently encountered (popular) facts are far more resistant to parametric removal. Existing gradient-based approaches weight token updates by model confidence, which is a local, surface-level measure that can conflate fluency with deep memorisation. We propose \textbf{AdaPop} (Adaptive Popularity): a robust approach that scales per-fact unlearning by a popularity-dependent exponent derived from an external proxy (e.g., Wikidata citelinks) and automatically balances forgetting vs. retention via a dual-ascent controller. Across three model families and two real-world knowledge benchmarks, \textbf{AdaPop} substantially improves paraphrase-generalised unlearning %and internal-representation disruption 
+while preserving downstream capabilities. %Internal metrics and ablations show the popularity exponent and the dual controller are complementary components that together achieve deeper, more generalised erasure than competitive baselines.
+Internal representation metrics confirm genuine parametric erasure rather than surface suppression, with general capability preserved across all models.
 \end{abstract}
 
 
 
-
-
-
-
 \section{Introduction}
-\input{latex/text/01_intro}
+\label{sec:intro}
+% \input{latex/text/01_intro}
+\input{latex/text/01_intro_rewrite}
 
-\section{Relared Work}
-\input{latex/text/02_rw}
+\section{Related Work}
+\label{sec:related}
+% \input{latex/text/02_rw}
+\input{latex/text/02_rw_rewrite}
 
-\section{Method}
+\section{Adaptive Popularity Method (AdaPop)}
+\label{sec:AdaPop}
 \input{latex/text/03_method}
 
-\section{Experiments}
+\section{Experimental Setup}
+\label{sec:experiments}
 \input{latex/text/04_experiments}
 
-\section{Concusion}
+\section{Conclusion}
+\label{sec:conclusion}
 \input{latex/text/05_conclusion}
 
 
 
 \section*{Limitations}
+\textbf{Dependency on an external popularity proxy.}
+AdaPop requires per-sample popularity scores. Wikidata \texttt{pop\_sum} provides good coverage for entity-centric factual QA but is unavailable for procedural or creative knowledge. LLM-estimated knowledgeability scores are a practical alternative, with correlation above $0.8$ with citation-based proxies~\cite{anna2026anatomy, marina2025llm}; the quality of the approximation directly limits the benefit of the popularity-dependent exponent.
 
-%% limitations - using data-centic algorithms in experiments. 
+\textbf{Calibration and evaluation scope.}
+The exponent coefficients $a$ and $b$ were derived from the DUET distribution; applying AdaPop to proxies with a very different scale (e.g., PageRank) requires recalibration via the procedure in Appendix~\ref{app:derivation}. 
+% All experiments use LoRA fine-tuning on 7--8B models; behaviour at larger scales, with full fine-tuning, or on non-entity knowledge types is not characterised.
 
-This document does not cover the content requirements for ACL or any
-other specific venue.  Check the author instructions for
-information on
-maximum page lengths, the required ``Limitations'' section,
-and so on.
+
+\section*{Ethics Statement}
+Our data come from public sources (HuggingFace, Wikidata, Wikipedia). We do not collect sensitive attributes, and no human subjects were involved. We view machine unlearning as a contribution to AI safety and data governance because it enables the removal of unsafe, outdated, or private content from deployed models. We also used ChatGPT 5 for minor language and grammatical edits; all research design, analysis, and interpretation were conducted by the authors.
+
 
 % \section*{Acknowledgments}
 
@@ -181,10 +222,7 @@ and so on.
 
 \appendix
 
-\section{Example Appendix}
 \label{sec:appendix}
 \input{latex/text/appendix}
-
-This is an appendix.
 
 \end{document}

@@ -1,0 +1,22 @@
+defaults:
+  - RMU
+
+# LoRA-compatible RMU variant.
+#
+# Two changes vs the base RMU.yaml:
+#   1. module_regex uses a prefix-agnostic pattern so it matches
+#      PEFT-wrapped module names (e.g. base_model.model.model.layers.7)
+#      as well as unwrapped ones (model.layers.7).
+#   2. trainable_params_regex restricts parameter updates to LoRA adapter
+#      weights only (names containing "lora"), leaving frozen base-model
+#      weights untouched despite RMU's freeze/unfreeze logic.
+
+handler: RMU
+method_args:
+  module_regex: ".*\\.layers\\.7"          # matches layer 7 under any PEFT prefix
+  trainable_params_regex:
+    - ".*lora.*"                           # only LoRA adapter weights
+  steering_coeff: 2
+  retain_loss_type: EMBED_DIFF
+  alpha: 1.0
+  gamma: 1.0

@@ -83,6 +83,7 @@ def compute_dpo_loss(model, ref_model, win_inputs=None, lose_inputs=None, beta=1
 
 
 def compute_undial_loss(model, ref_model, inputs, beta):
+    inputs = _filter_model_inputs(inputs)
     # Forward pass on the student (trainable) model
     outputs = model(**inputs)
     logits = outputs.logits
@@ -144,16 +145,21 @@ def compute_wga_loss(model, inputs, beta):
     return forget_loss, outputs
 
 
-def beta_from_pop_sum_tensor(pop_sum: torch.Tensor) -> torch.Tensor:
+def beta_from_pop_sum_tensor(
+    pop_sum: torch.Tensor,
+    beta_a: float = 58.7,
+    beta_b: float = 0.796,
+) -> torch.Tensor:
     """Compute dynamic beta from a tensor of pop_sum using the clipped power-law.
 
-    beta(p) = clip(58.7 * p^(-0.796), 0.05, 2.0)
+    beta(p) = clip(beta_a * p^(-beta_b), 0.05, 2.0)
 
+    Defaults correspond to anchor points (sr=100, beta_r=1.5) and (sp=3000, beta_p=0.1).
     Expects a float tensor; clamps p to avoid zero.
     Returns a tensor on the same device/dtype as input.
     """
     p = pop_sum.clamp(min=1e-8)
-    beta_raw = 58.7 * torch.pow(p, -0.796)
+    beta_raw = beta_a * torch.pow(p, -beta_b)
     return beta_raw.clamp(min=0.05, max=2.0)
 
 
@@ -208,6 +214,8 @@ def compute_wga_loss_dynamic_beta(
     beta_from_pop_sum: bool = True,
     rep_coeff: float = 0.0,
     beta_const: float | None = None,
+    beta_a: float = 58.7,
+    beta_b: float = 0.796,
 ):
     """Compute WGA loss with per-sample dynamic beta and optional anti-repetition penalty.
 
@@ -238,7 +246,7 @@ def compute_wga_loss_dynamic_beta(
         beta_vec = torch.full((B,), float(beta_const), device=shift_logits.device, dtype=shift_logits.dtype)
     elif beta_from_pop_sum and ("pop_sum" in inputs):
         pop_sum = inputs["pop_sum"].to(shift_logits.device).float().view(B)
-        beta_vec = beta_from_pop_sum_tensor(pop_sum)
+        beta_vec = beta_from_pop_sum_tensor(pop_sum, beta_a=beta_a, beta_b=beta_b)
     else:
         beta_vec = torch.ones(B, device=shift_logits.device, dtype=shift_logits.dtype)
 

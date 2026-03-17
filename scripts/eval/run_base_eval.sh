@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-repo_root=$(realpath "$(dirname "$0")/..")
+repo_root=$(realpath "$(dirname "$0")/../..")
 
 BENCHMARK="${BENCHMARK:-duet}"   # duet | popqa | rwku
 BASE_MODEL="${BASE_MODEL:-Llama-3.1-8B-Instruct}"

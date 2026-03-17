@@ -6,7 +6,7 @@ OpenUnlearning is an extensible framework for unifying Large Language Model (LLM
 
 - **Core Goal:** Provide a unified and easily extensible platform for benchmarking LLM unlearning methods.
 - **Main Technologies:**
-    - **Language:** Python 3.11+
+    - **Language:** Python 3.11+, for runnig use conda env 'MU': 'conda activate MU'
     - **Frameworks:** PyTorch, Transformers (HuggingFace), PEFT (LoRA).
     - **Configuration:** Hydra (extensive use of YAML configs).
     - **Training/Optimization:** Accelerate, DeepSpeed, Flash Attention.

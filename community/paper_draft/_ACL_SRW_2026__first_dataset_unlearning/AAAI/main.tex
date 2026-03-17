@@ -1,0 +1,261 @@
+%File: anonymous-submission-latex-2026.tex
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage[submission]{aaai2026}  % DO NOT CHANGE THIS
+\usepackage{times}  % DO NOT CHANGE THIS
+\usepackage{helvet}  % DO NOT CHANGE THIS
+\usepackage{courier}  % DO NOT CHANGE THIS
+\usepackage[hyphens]{url}  % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm}  % DO NOT CHANGE THIS
+\usepackage{natbib}  % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing  % DO NOT CHANGE THIS
+\setlength{\pdfpagewidth}{8.5in} % DO NOT CHANGE THIS
+\setlength{\pdfpageheight}{11in} % DO NOT CHANGE THIS
+%
+% These are recommended to typeset algorithms but not required. See the subsubsection on algorithms. Remove them if you don't have algorithms in your paper.
+\usepackage{algorithm}
+\usepackage{algorithmic}
+% \usepackage{subcaption}
+\usepackage{float}
+\usepackage[most]{tcolorbox}
+\usepackage{csquotes}
+
+
+
+
+
+
+
+%
+% These are are recommended to typeset listings but not required. See the subsubsection on listing. Remove this block if you don't have listings in your paper.
+\usepackage{newfloat}
+\usepackage{listings}
+\DeclareCaptionStyle{ruled}{labelfont=normalfont,labelsep=colon,strut=off} % DO NOT CHANGE THIS
+\lstset{%
+	basicstyle={\footnotesize\ttfamily},% footnotesize acceptable for monospace
+	numbers=left,numberstyle=\footnotesize,xleftmargin=2em,% show line numbers, remove this entire line if you don't want the numbers.
+	aboveskip=0pt,belowskip=0pt,%
+	showstringspaces=false,tabsize=2,breaklines=true}
+\floatstyle{ruled}
+\newfloat{listing}{tb}{lst}{}
+\floatname{listing}{Listing}
+%
+% Keep the \pdfinfo as shown here. There's no need
+% for you to add the /Title and /Author tags.
+\pdfinfo{
+/TemplateVersion (2026.1)
+}
+
+% DISALLOWED PACKAGES
+% \usepackage{authblk} -- This package is specifically forbidden
+% \usepackage{balance} -- This package is specifically forbidden
+% \usepackage{color (if used in text)
+% \usepackage{CJK} -- This package is specifically forbidden
+% \usepackage{float} -- This package is specifically forbidden
+% \usepackage{flushend} -- This package is specifically forbidden
+% \usepackage{fontenc} -- This package is specifically forbidden
+% \usepackage{fullpage} -- This package is specifically forbidden
+% \usepackage{geometry} -- This package is specifically forbidden
+% \usepackage{grffile} -- This package is specifically forbidden
+% \usepackage{hyperref} -- This package is specifically forbidden
+% \usepackage{navigator} -- This package is specifically forbidden
+% (or any other package that embeds links such as navigator or hyperref)
+% \indentfirst} -- This package is specifically forbidden
+% \layout} -- This package is specifically forbidden
+% \multicol} -- This package is specifically forbidden
+% \nameref} -- This package is specifically forbidden
+% \usepackage{savetrees} -- This package is specifically forbidden
+% \usepackage{setspace} -- This package is specifically forbidden
+% \usepackage{stfloats} -- This package is specifically forbidden
+% \usepackage{tabu} -- This package is specifically forbidden
+% \usepackage{titlesec} -- This package is specifically forbidden
+% \usepackage{tocbibind} -- This package is specifically forbidden
+% \usepackage{ulem} -- This package is specifically forbidden
+% \usepackage{wrapfig} -- This package is specifically forbidden
+% DISALLOWED COMMANDS
+% \nocopyright -- Your paper will not be published if you use this command
+% \addtolength -- This command may not be used
+% \balance -- This command may not be used
+% \baselinestretch -- Your paper will not be published if you use this command
+% \clearpage -- No page breaks of any kind may be used for the final version of your paper
+% \columnsep -- This command may not be used
+% \newpage -- No page breaks of any kind may be used for the final version of your paper
+% \pagebreak -- No page breaks of any kind may be used for the final version of your paperr
+% \pagestyle -- This command may not be used
+% \tiny -- This is not an acceptable font size.
+% \vspace{- -- No negative value may be used in proximity of a caption, figure, table, section, subsection, subsubsection, or reference
+% \vskip{- -- No negative value may be used to alter spacing above or below a caption, figure, table, section, subsection, subsubsection, or reference
+
+
+% my modules
+\usepackage{amsmath} 
+
+\setcounter{secnumdepth}{2} %May be changed to 1 or 2 if section numbers are desired.
+
+% The file aaai2026.sty is the style file for AAAI Press
+% proceedings, working notes, and technical reports.
+
+% Title
+% \title{Unlearning by Popularity: Evaluating Rare vs. Common Fact Removal in LLMs}
+%\title{On the Difficulty of Forgetting What is Highly Known: \\ How Knowledge Popularity Impacts Machine Unlearning}
+\title{The Silence of the Facts: Popularity as a Barrier to Machine Unlearning} 
+\author{
+    %Authors
+    % All authors must be in the same font size and format.
+    Written by AAAI Press Staff\textsuperscript{\rm 1}\thanks{With help from the AAAI Publications Committee.}\\
+    AAAI Style Contributions by Pater Patel Schneider,
+    Sunil Issar,\\
+    J. Scott Penberthy,
+    George Ferguson,
+    Hans Guesgen,
+    Francisco Cruz\equalcontrib,
+    Marc Pujol-Gonzalez\equalcontrib
+}
+\affiliations{
+    %Afiliations
+    \textsuperscript{\rm 1}Association for the Advancement of Artificial Intelligence\\
+    % If you have multiple authors and multiple affiliations
+    % use superscripts in text and roman font to identify them.
+    % For example,
+
+    % Sunil Issar\textsuperscript{\rm 2},
+    % J. Scott Penberthy\textsuperscript{\rm 3},
+    % George Ferguson\textsuperscript{\rm 4},
+    % Hans Guesgen\textsuperscript{\rm 5}
+    % Note that the comma should be placed after the superscript
+
+    1101 Pennsylvania Ave, NW Suite 300\\
+    Washington, DC 20004 USA\\
+    % email address must be in roman text type, not monospace or sans serif
+    proceedings-questions@aaai.org
+%
+% See more examples next
+}
+
+%Example, Single Author, ->> remove \iffalse,\fi and place them surrounding AAAI title to use it
+\iffalse
+\title{My Publication Title --- Single Author}
+\author {
+    Author Name
+}
+\affiliations{
+    Affiliation\\
+    Affiliation Line 2\\
+    name@example.com
+}
+\fi
+
+\iffalse
+%Example, Multiple Authors, ->> remove \iffalse,\fi and place them surrounding AAAI title to use it
+\title{My Publication Title --- Multiple Authors}
+\author {
+    % Authors
+    First Author Name\textsuperscript{\rm 1},
+    Second Author Name\textsuperscript{\rm 2},
+    Third Author Name\textsuperscript{\rm 1}
+}
+\affiliations {
+    % Affiliations
+    \textsuperscript{\rm 1}Affiliation 1\\
+    \textsuperscript{\rm 2}Affiliation 2\\
+    firstAuthor@affiliation1.com, secondAuthor@affilation2.com, thirdAuthor@affiliation1.com
+}
+\fi
+
+
+% REMOVE THIS: bibentry
+% This is only needed to show inline citations in the guidelines document. You should not need it and can safely delete it.
+%\usepackage{bibentry}
+% END REMOVE bibentry
+
+\usepackage{comment}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\input{text/01_abstract}
+\end{abstract}
+
+\begin{figure}[!t]
+  \centering
+  \makebox[\columnwidth][c]{%
+    \includegraphics[width=1\columnwidth]{images/llama8b_unlearning.pdf}%
+  }
+  \caption{Unlearning performance of LLaMA-3.1 8B Instruct on rare vs.\ popular facts (10\% forget‑set split), reporting ROUGE‑L recall for retained facts and two validation sets: duplicate answers and duplicate entities (defined in Section~\ref{subsec:duplicates_splits} and illustrated in Figure~\ref{fig:UNLamb}).}
+
+    \label{fig:mu_modes}
+\end{figure}
+
+
+
+% \underline{\textbf{Github repo:}} \href{https://github.com/Anya-wUw/popqa-unlearning}{link}
+
+% Uncomment the following to link to your code, datasets, an extended version or similar.
+% TODO You must keep this block between (not within) the abstract and the main body of the paper.
+% \begin{links}
+%     \link{Code}{https://anonymous.4open.science/r/UNLamb_unlearning-B7E4/README.md}
+%     \link{Datasets}{https://huggingface.co/datasets/SwetieePawsss/UNLamb}
+%     % \link{Extended version}{https://aaai.org/example/extended-version}
+% \end{links}
+
+% \begin{links}
+%     \link{Code}{https://anonymous.4open.science/r/UNLamb_unlearning-B7E4}
+%     \link{Benchmark}{https://huggingface.co/datasets/SwetieePawsss/UNLamb}
+% \end{links}
+
+% The experimental \textbf{code is hosted anonymously}, and the \textbf{dataset is published} on Hugging Face \textbf{via a purpose-built inactive account} with random username; the repository builds on the OpenUnlearning framework \cite{openunlearning2025}.
+
+\input{text/02_introduction}
+
+\input{text/03_related_works}
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/UNLamb.pdf}
+    % \caption{Diagram of the UnlearnPopQA Benchmark Construction Process for \(p=10\)\%}
+    \caption{Benchmark construction pipeline for UNLamb with forget split of $p=10\%$. \textbf{Top:} The full set of 11.6K facts is partitioned into two 10\% “forget” splits (rare vs.\ popular) and an 80\% “retain” split. \textbf{Left Bottom:} Subject split—intersecting each (rare, popular) forget subset with the full set produces new subject‑based questions with duplicate subjects. \textbf{Right Bottom:} Answer split—intersecting each forget subset with the full set yields new answer‑based questions with duplicate answers. There can be overlap between sets of duplicates, rare questions, and popular new questions.}
+    \label{fig:UNLamb}
+\end{figure*}
+
+\input{text/04_task_objectives}
+
+
+
+\input{text/05_benchmark_constraction}
+
+\input{text/06_evaluation_methodology}
+
+%% Unlearn retain on N=10%
+% \begin{figure*}[t]
+%     \centering
+%     \includegraphics[width=2.1\columnwidth]{images/unlearn10_retain.png}
+%     \caption{LLM Performance After 10\% Data Unlearning – Comparative Retain set ROUGE-L Recall on Rare vs Popular Splits}
+%     \label{fig:mu_retain}
+% \end{figure*}
+
+%% Unlearn validation on N=10%
+% \begin{figure*}[t]
+%     \centering
+%     \includegraphics[width=2.1\columnwidth]{images/unlearn10_dupl.png}
+%     \caption{LLM Performance After 10\% Data Unlearning – Comparative Validation set ROUGE-L Recall on Rare vs Popular Splits}
+%     \label{fig:mu_validation}
+% \end{figure*}
+
+\input{text/07_results}
+
+\input{text/08_discussion}
+
+\input{text/09_conclusion}
+
+\bibliography{aaai2026}
+
+% \input{text/10_appendix}
+
+\clearpage
+
+% \input{AAAI_ReproducibilityChecklist.tex}
+\input{text/checklist}
+
+\end{document}

@@ -12,6 +12,7 @@ class PDU(GradDiff):
         dual_update_upon="step",
         dual_warmup_epochs=0,
         loss_names=None,
+        beta=None,  # unused by PDU; absorbed to avoid Hydra merge leaking WGA's beta
         *args,
         **kwargs,
     ):

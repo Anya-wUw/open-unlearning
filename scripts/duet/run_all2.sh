@@ -7,8 +7,8 @@ script_dir=$(dirname "$(realpath "$0")")
 export MERGE_POPULARITY_FORGET=1
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-1}
 # export LRS=${LRS:-"1e-5 1e-4 1e-3"}
-# export LRS=${LRS:-"1e-5 5e-5 1e-4 5e-4 1e-3"} 
-export LRS=${LRS:-"1e-6 5e-6 1e-5 5e-5 1e-4"} 
+export LRS=${LRS:-"1e-6 5e-6 1e-5 4e-5 5e-5 1e-4 5e-4"} 
+# export LRS=${LRS:-"1e-6 5e-6 1e-5 5e-5 1e-4"} 
 # export LRS=${LRS:-"1e-6 5e-6 1e-5 2e-5 4e-5 5e-5"} 
 
 echo "[duet] Running AdaPop"

@@ -53,9 +53,26 @@ def _load_model_cfg(name: str) -> Dict:
     return OmegaConf.load(cfg_path)
 
 
+_DUET_COMBINED_SPLITS = {
+    "city_forget_1":  ("city_forget_rare_1",  "city_forget_popular_1"),
+    "city_forget_5":  ("city_forget_rare_5",  "city_forget_popular_5"),
+    "city_forget_10": ("city_forget_rare_10", "city_forget_popular_10"),
+    "forget_1":       ("forget_rare_1",       "forget_popular_1"),
+    "forget_5":       ("forget_rare_5",       "forget_popular_5"),
+    "forget_10":      ("forget_rare_10",      "forget_popular_10"),
+}
+
+
 def _load_dataset(benchmark: str, split: str) -> Iterable[Dict]:
     if benchmark == "duet":
-        ds = datasets.load_dataset("SwetieePawsss/DUET", split=split)
+        if split in _DUET_COMBINED_SPLITS:
+            rare_split, pop_split = _DUET_COMBINED_SPLITS[split]
+            ds = datasets.concatenate_datasets([
+                datasets.load_dataset("SwetieePawsss/DUET", split=rare_split),
+                datasets.load_dataset("SwetieePawsss/DUET", split=pop_split),
+            ])
+        else:
+            ds = datasets.load_dataset("SwetieePawsss/DUET", split=split)
     elif benchmark == "popqa":
         ds = datasets.load_dataset("SwetieePawsss/exp_UNLamb", split=split)
     elif benchmark == "rwku":

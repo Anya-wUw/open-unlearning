@@ -1,0 +1,381 @@
+\section{Experiments}
+
+\subsection{Experimental Details.}
+\label{sec:experiments}
+
+\paragraph{Compute budget and evaluation cost.}
+\textit{One full experiment cycle on an A100 GPU} -- comprising $\approx1\text{h}10\text{m}$ for fine-tuning, $\approx1.5\text{h}$ for unlearning (popular and rare) with GA, GD, NPO, and RMU, and $\approx9\text{h}=1\text{h}\times\left(1+2\times4\right)$ for ROUGE evaluation for FT and four unlearning methods -- \textit{takes approximately $12$ hours}.
+
+%All experiments were conducted on NVIDIA A100 GPUs.
+
+\paragraph{Model Preparation.}
+Our base model for all unlearning experiments is a LLaMA-3 model that has been first fine-tuned on the complete UNLamb corpus $\mathcal{D}$. This step creates a consistent, knowledgeable baseline from which all unlearning begins. This fine-tuning was performed for 5 epochs with a learning rate of $2 \times 10^{-4}$ using Low-Rank Adaptation (LoRA) with a rank of 32 and an alpha of 64. 
+To ensure reproducibility, all experiments use a fixed random seed (42); reported results are based on a single seed.
+
+As mentioned in Section \ref{sec:rw}, LLaMA-3 is most commonly used for unlearning experiments due to its superior effectiveness; therefore, this study focuses specifically on that model. While our primary focus remained on the LLaMA-3 model, we also evaluated the GEMMA 7B model using the 10\% data split (detailed in Section \ref{sec:exp_res}). Interestingly, GEMMA 7B demonstrated effective unlearning for rare facts but showed ineffective forgetting for popular under identical experimental conditions (See Table \ref{tab:gemma_unlearn}). This differential unlearning behavior could potentially be attributed to variations in model architecture or pretraining specifics.
+
+\begin{table}[h!t]
+  \centering
+  \small
+  \setlength{\tabcolsep}{3pt}
+  \resizebox{\columnwidth}{!}{%
+    \begin{tabular}{|l|c|c|c|c|c|}
+      \hline
+       & \textbf{FT} & \textbf{GradAscent} & \textbf{GradDiff} & \textbf{NPO} & \textbf{RMU} \\
+      \hline
+      \multicolumn{6}{|l|}{\textbf{Rare unlearning}} \\
+      \hline
+      rare\_forget10 $\downarrow$
+        & 0.458 & \textbf{0.246} & \textbf{0.321} & \textbf{0.321} & \textbf{0.324} \\
+      \hline
+      duplicate\_subjects\_rare\_forget10 $\uparrow$
+        & 0.430 & 0.333 & 0.421 & 0.433 & 0.312 \\
+      \hline
+      duplicate\_answers\_rare\_forget10 $\uparrow$
+        & 0.725 & 0.567 & 0.649 & 0.652 & 0.571 \\
+      \hline
+      retain\_intersection80 $\uparrow$
+        & 0.501 & \textbf{0.397} & \textbf{0.468} & \textbf{0.460} & \textbf{0.375} \\
+      \hline
+      \multicolumn{6}{|l|}{\textbf{Popular unlearning}} \\
+      \hline
+      popular\_forget10 $\downarrow$
+        & 0.910 & \textbf{0.854} & \textbf{0.885} & \textbf{0.868} & \textbf{0.741} \\
+      \hline
+      duplicate\_subjects\_popular\_forget10 $\uparrow$
+        & 0.471 & 0.474 & 0.487 & 0.474 & 0.196 \\
+      \hline
+      duplicate\_answers\_popular\_forget10 $\uparrow$
+        & 0.738 & 0.725 & 0.735 & 0.735 & 0.576 \\
+      \hline
+      retain\_intersection80 $\uparrow$
+        & 0.501 & \textbf{0.500} & \textbf{0.510} & \textbf{0.508} & \textbf{0.323} \\
+      \hline
+    \end{tabular}%
+  }
+  \caption{ROUGE-L recall performance on Gemma 7B for 10\% forget-set size. Top: rare unlearning splits; Bottom: popular unlearning splits.}
+  \label{tab:gemma_unlearn}
+\end{table}
+
+\subsection{Hyperparameter Optimization.}
+\label{sec:hyperparameters}
+
+To ensure optimal performance and facilitate a comparative analysis of the influence of split size and model architecture, a comprehensive grid search was conducted for both the initial training and subsequent unlearning phases. The primary objective was to identify hyperparameter configurations that optimized loss (aiming for lower loss during training and controlled, non-catastrophic forgetting loss during unlearning) and ROUGE-L metric (maximizing for training, and maintaining a reasonable balance to avoid both excessive retention and severe degradation during unlearning).
+
+% The search space for hyperparameter optimization included:
+The hyperparameter search space included:
+\begin{itemize}
+    \item \textbf{Epochs:} Ranging from 1 to 5.
+    \item \textbf{LoRA Rank and Alpha:} Ranging from 4 to 256.
+    \item \textbf{Learning Rate:} Ranging from $1 \times 10^{-5}$ to $5 \times 10^{-3}$.
+\end{itemize}
+
+Initial optimization indicated $1 \times 10^{-4}$ as a promising learning rate. Hyperparameter search revealed \textbf{$2 \times 10^{-4}$ as the optimal learning rate for fine-tuning} and \textbf{$3 \times 10^{-5}$ for unlearning}. Both phases consistently benefited from a LoRA rank of 32 and a scaling factor $\alpha = 64$.
+More detailed optimal parameters for the unlearning algorithms can be found in the configuration files within the specified repository after Abstract.
+
+
+\paragraph{Unlearning Procedure.}
+Starting from the fine-tuned model, we perform unlearning with LoRA adapters (rank=32, $\alpha=64$) -- these values were selected via grid search on the rare and popular forget sets. Each unlearning run uses the grid-searched configuration and is carried out for two epochs: the search revealed that one epoch is typically insufficient to induce effective forgetting, whereas three or more cause catastrophic degradation of model utility. After unlearning on each set, we compute the full suite of metrics (forget-set efficacy, validation-locality, and general capability preservation) and analyze the differences between rare and popular fact removal.
+
+
+
+
+
+
+
+
+
+
+\subsection{Results}
+\label{sec:exp_res}
+
+%% Упомянуть что в главной частьи статьи приведены результаты анлернинга на фогет сплите 10%, как оптимальный между 5, 10 и 15%. результаты остальных 5 и 15% приведены в аппендиксе 
+
+
+\begin{table*}[t]
+\centering
+%\small
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+\hline
+ & \multicolumn{3}{c|}{\textbf{FT}} 
+ & \multicolumn{3}{c|}{\textbf{GradAscent}} 
+ & \multicolumn{3}{c|}{\textbf{GradDiff}} 
+ & \multicolumn{3}{c|}{\textbf{NPO}} 
+ & \multicolumn{3}{c|}{\textbf{RMU}} \\
+\hline
+\multicolumn{1}{|r|}{\textbf{Split, p\%}} 
+ & 5\% & 10\% & 15\% 
+ & 5\% & 10\% & 15\% 
+ & 5\% & 10\% & 15\% 
+ & 5\% & 10\% & 15\% 
+ & 5\% & 10\% & 15\% \\
+\hline
+\multicolumn{16}{|l|}{\textbf{Rare unlearning}} \\
+\hline
+rare\_forget\_p\% $\downarrow$                    
+  & 0.967 & 0.969 & 0.973 
+  & \textbf{0.905} & \textbf{\underline{0.633}} & \textbf{0.000} 
+  & \textbf{0.915} & \textbf{0.852} & \textbf{0.454} 
+  & \textbf{0.905} & \textbf{0.763} & \textbf{0.047} 
+  & \textbf{0.781} & \textbf{0.726} & \textbf{0.741} \\
+\hline
+duplicate\_entities\_rare\_forget\_p\% $\uparrow$
+  & 0.978 & 0.982 & 0.990 
+  & 0.989 & 0.836 & 0.000 
+  & 0.989 & 0.973 & 0.770 
+  & 0.989 & 0.952 & 0.197 
+  & 0.757 & 0.518 & 0.272 \\
+\hline
+duplicate\_answers\_rare\_forget\_p\% $\uparrow$
+  & 0.994 & 0.988 & 0.993 
+  & 0.993 & 0.765 & 0.000 
+  & 0.994 & 0.979 & 0.720 
+  & 0.993 & 0.917 & 0.176 
+  & 0.736 & 0.597 & 0.544 \\
+\hline
+retain\_intersection\_{(100-2p)\%} $\uparrow$
+  & 0.989 & 0.989 & 0.990 
+  & \textbf{0.988} & \textbf{\underline{0.867}} & \textbf{0.000} 
+  & \textbf{0.988} & \textbf{0.978} & \textbf{0.728} 
+  & \textbf{0.988} & \textbf{0.936} & \textbf{0.187} 
+  & \textbf{0.777} & \textbf{0.622} & \textbf{0.354} \\
+\hline
+\multicolumn{16}{|l|}{\textbf{Popular unlearning}} \\
+\hline
+popular\_forget\_p\% $\downarrow$
+  & 1.000 & 1.000 & 0.999 
+  & \textbf{0.993} & \textbf{0.191} & \textbf{0.000} 
+  & \textbf{1.000} & \textbf{0.998} & \textbf{0.183} 
+  & \textbf{0.993} & \textbf{\underline{0.411}} & \textbf{0.012} 
+  & \textbf{0.962} & \textbf{0.882} & \textbf{0.818} \\
+\hline
+duplicate\_entities\_popular\_forget\_p\% $\uparrow$
+  & 1.000 & 1.000 & 0.998 
+  & 0.990 & 0.318 & 0.000 
+  & 0.990 & 1.000 & 0.429 
+  & 1.000 & 0.773 & 0.116 
+  & 0.810 & 0.389 & 0.176 \\
+\hline
+duplicate\_answers\_popular\_forget\_p\% $\uparrow$
+  & 0.997 & 0.989 & 0.990 
+  & 0.996 & 0.564 & 0.000 
+  & 0.995 & 0.988 & 0.597 
+  & 0.994 & 0.834 & 0.231 
+  & 0.950 & 0.696 & 0.493 \\
+\hline
+retain\_intersection\_{(100-2p)\%} $\uparrow$
+  & 0.989 & 0.989 & 0.990 
+  & \textbf{0.988} & \textbf{0.409} & \textbf{0.000} 
+  & \textbf{0.989} & \textbf{0.990} & \textbf{0.546} 
+  & \textbf{0.989} & \textbf{\underline{0.831}} & \textbf{0.139} 
+  & \textbf{0.890} & \textbf{0.596} & \textbf{0.310} \\
+\hline
+\end{tabular}
+}
+\caption{Unlearning LLaMA-3.1 8B: ROUGE-1 Recall performance of five methods (fine-tuning(FT), GradAscent, GradDiff, NPO, RMU) for 5-15\% forget-set sizes, on rare (top) vs. popular (bottom) splits. Learning rate: $3 \times 10^{-5}$.}
+% Unlearning performance by ROUGE-1 Recall metric of five methods (FT, GradAscent, GradDiff, NPO, RMU) on the Llama3.1-8B model for forget‐set sizes of 5\%, 10\% and 15\%. Top block: unlearning on rare\_forget\_p\% splits; bottom block: unlearning on popular\_forget\_p\% splits. \textit{retain\_intersection} is computed over the complement (100–2p\%). All runs used a learning rate of $3\times10^{-5}$.
+\label{tab:split_comparison}
+\end{table*}
+
+
+
+
+
+\paragraph{Unlearning Utility by Forget Set Size.}
+We evaluated unlearning with forget-set sizes of 5\% (582 samples), 10\% (1.16k), and 15\% (1.75k); results in Table \ref{tab:split_comparison} report efficacy and retention across methods. The 10\% split yielded the best trade-off for both rare and popular facts: 5\% was too small to reliably induce forgetting, whereas 15\% frequently triggered catastrophic degradation or ineffective unlearning unless hyperparameters were carefully retuned (see detailed hyperparameter behavior in Table \ref{tab:popular_vs_rare_15pct}). Crucially, catastrophic forgetting at 15\% was significantly more severe when removing popular facts.
+
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+\hline 
+ & \multicolumn{3}{c|}{\textbf{FT}}
+ & \multicolumn{3}{c|}{\textbf{GradAscent}}
+ & \multicolumn{3}{c|}{\textbf{GradDiff}}
+ & \multicolumn{3}{c|}{\textbf{NPO}}
+ & \multicolumn{3}{c|}{\textbf{RMU}} \\
+\hline
+\multicolumn{1}{|r|}{\textbf{Model size, B}}
+ & 1B & 3B & 8B & 1B & 3B & 8B & 1B & 3B & 8B & 1B & 3B & 8B & 1B & 3B & 8B \\
+\hline
+\multicolumn{16}{|l|}{\textbf{Rare unlearning}} \\
+\hline
+    rare\_forget10 $\downarrow$                & 0.160 & 0.211 & 0.969 
+    & \textbf{0.019} & \textbf{0.051} & \textbf{0.633} 
+    & \textbf{0.130} & \textbf{0.048} & \textbf{0.852} 
+    & \textbf{0.074} & \textbf{0.047} & \textbf{0.763} 
+    & \textbf{0.128} & \textbf{0.186} & \textbf{0.726} \\
+\hline
+duplicate\_subjects\_rare\_forget10 $\uparrow$  & 0.132 & 0.283 & 0.982 & 0.069 & 0.165 & 0.836 & 0.094 & 0.246 & 0.973 & 0.091 & 0.197 & 0.952 & 0.070 & 0.202 & 0.518 \\
+\hline
+duplicate\_answers\_rare\_forget10 $\uparrow$   & 0.353 & 0.518 & 0.988 & 0.175 & 0.279 & 0.765 & 0.356 & 0.483 & 0.979 & 0.269 & 0.400 & 0.917 & 0.295 & 0.363 & 0.597 \\
+\hline
+retain\_intersection80 $\uparrow$                 & 0.129 & 0.341 & 0.989 
+    & \textbf{0.056} & \textbf{0.133} & \textbf{0.867} 
+    & \textbf{0.128} & \textbf{0.322} & \textbf{0.978} 
+    & \textbf{0.091} & \textbf{0.228} & \textbf{0.936} 
+    & \textbf{0.087} & \textbf{0.236} & \textbf{0.622} \\
+\hline
+\multicolumn{16}{|l|}{\textbf{Popular unlearning}} \\
+\hline
+popular\_forget10 $\downarrow$                    & 0.456 & 0.816 & 1.000 
+    & \textbf{0.100} & \textbf{0.087} & \textbf{0.191} 
+    & \textbf{0.325} & \textbf{0.525} & \textbf{0.998} 
+    & \textbf{0.129} & \textbf{0.535} & \textbf{0.411} 
+    & \textbf{0.354} & \textbf{0.532} & \textbf{0.882} \\
+
+\hline
+duplicate\_subjects\_popular\_forget10 $\uparrow$ & 0.115 & 0.337 & 1.000 & 0.056 & 0.036 & 0.318 & 0.115 & 0.258 & 1.000 & 0.066 & 0.055 & 0.773 & 0.095 & 0.192 & 0.389 \\
+\hline
+duplicate\_answers\_popular\_forget10 $\uparrow$  & 0.348 & 0.556 & 0.989 & 0.272 & 0.246 & 0.564 & 0.343 & 0.530 & 0.988 & 0.291 & 0.308 & 0.834 & 0.312 & 0.468 & 0.696 \\
+\hline
+retain\_intersection80 $\uparrow$                 & 0.129 & 0.341 & 0.989 
+    & \textbf{0.077} & \textbf{0.088} & \textbf{0.409} 
+    & \textbf{0.122} & \textbf{0.322} & \textbf{0.990} 
+    & \textbf{0.090} & \textbf{0.127} & \textbf{0.831} 
+    & \textbf{0.101} & \textbf{0.247} & \textbf{0.596} \\
+
+\hline
+\end{tabular}
+}
+\caption{
+Unlearning LLaMA-3 models (1B-8B): ROUGE-1 Recall performance of five methods (fine-tuning(FT), GradAscent, GradDiff, NPO, RMU) on 10\% rare (top) vs. popular (bottom) forget sets.
+}
+\label{tab:size_unlearning}
+\end{table*}
+
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+\hline
+ & \multicolumn{3}{c|}{\textbf{FT}} 
+ & \multicolumn{3}{c|}{\textbf{GradAscent}} 
+ & \multicolumn{3}{c|}{\textbf{GradDiff}} 
+ & \multicolumn{3}{c|}{\textbf{NPO}} 
+ & \multicolumn{3}{c|}{\textbf{RMU}} \\
+\hline
+ & 1B & 3B & 8B 
+ & 1B & 3B & 8B 
+ & 1B & 3B & 8B 
+ & 1B & 3B & 8B 
+ & 1B & 3B & 8B \\
+\hline
+\multicolumn{16}{|l|}{\textbf{Rare unlearning}} \\
+\hline
+MMLU $\uparrow$      & 0.435 & 0.601 & 0.670 & 0.389 & 0.593 & 0.670 & 0.385 & 0.588 & 0.668 & 0.388 & 0.593 & 0.669 & 0.349 & 0.579 & 0.655 \\
+\hline
+HellaSwag $\uparrow$ & 0.614 & 0.711 & 0.788 & 0.578 & 0.658 & 0.757 & 0.581 & 0.662 & 0.747 & 0.583 & 0.660 & 0.753 & 0.581 & 0.668 & 0.750 \\
+\hline
+\multicolumn{16}{|l|}{\textbf{Popular unlearning}} \\
+\hline
+MMLU $\uparrow$      & 0.435 & 0.601 & 0.670 & 0.386 & 0.579 & 0.659 & 0.390 & 0.585 & 0.666 & 0.387 & 0.581 & 0.662 & 0.352 & 0.581 & 0.649 \\
+\hline
+HellaSwag $\uparrow$ & 0.614 & 0.711 & 0.788 & 0.581 & 0.668 & 0.749 & 0.580 & 0.666 & 0.744 & 0.581 & 0.668 & 0.749 & 0.580 & 0.670 & 0.752 \\
+\hline
+\end{tabular}%
+}
+\caption{LLMs Performance After 10\% Data Unlearning – Comparative MMLU and HellaSwag Benchmarks on Rare vs Popular Splits}
+\label{tab:llm_bench10}
+\end{table*}
+
+\paragraph{Unlearning Utility by Model Size.}
+We analyzed how model size impacts unlearning efficacy (Table \ref{tab:size_unlearning}). We compared four unlearning methods (GA, GD, NPO, RMU) on LLaMa-3 models with 1B, 3B, and 8B parameters, using a 10\% forget split, which is a standard practice in unlearning studies \cite{tofu2024, pal2025llm}.
+
+Unlearning effectiveness is directly correlated with model size. Smaller models (1B and 3B) cannot reliably forget either rare or popular facts. They are prone to catastrophic forgetting with Gradient Ascent and are ineffective with Gradient Difference.
+
+The 8B-parameter model shows a different pattern. When \textbf{unlearning popular facts, models more frequently plunge into catastrophic forgetting} especially with Gradient Ascent, than when targeting rare facts.
+
+
+
+
+\paragraph{Unlearning LLMs on Benchmarks.}
+% TODO: Table 3 MMLU, HellaSwag
+
+%% LLM benchmarks eval on p=10%
+%% TODO: убрать orig model
+% \begin{figure*}[t]
+%     \centering
+%     \includegraphics[width=2.1\columnwidth]{images/n10_llm_eval.png}
+%     \caption{LLM Performance After 10\% Data Unlearning – Comparative MMLU and HellaSwag Benchmarks on Rare vs Popular Splits}
+%     \label{fig:llm_bench10}
+% \end{figure*}
+
+
+Despite the drop in UNLamb-specific metrics, the model’s overall quality remains largely intact on standard LLM benchmarks. Table~\ref{tab:llm_bench10} shows performance on MMLU and HellaSwag for the original model, the model fine-tuned on UNLamb, and the four unlearning methods, separately for rare and popular fact removal. Across model sizes, unlearning—even when aggressive on UNLamb—\textbf{preserves downstream capability}, with similar degradation patterns for both rare and popular splits.
+
+
+
+
+
+
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|c|
+c|c|c|
+c|c|c|
+c|c|c|
+c|c|c|}
+\hline
+ & \textbf{FT} 
+ & \multicolumn{3}{c|}{\textbf{GradAscent}} 
+ & \multicolumn{3}{c|}{\textbf{GradDiff}} 
+ & \multicolumn{3}{c|}{\textbf{NPO}} 
+ & \multicolumn{3}{c|}{\textbf{RMU}} \\
+\hline
+% \textbf{Unlearning lr} & -- 
+\multicolumn{1}{|r|}{\textbf{Unlearning lr}} & --
+ & 1e-5 & 2e-5 & 3e-5 
+ & 1e-5 & 2e-5 & 3e-5 
+ & 1e-5 & 2e-5 & 3e-5 
+ & 1e-5 & 2e-5 & 3e-5 \\
+\hline
+\multicolumn{14}{|l|}{\textbf{Rare unlearning }} \\
+\hline
+rare\_forget15 ↓ 
+& 0.973 
+& 0.941 & 0.021 & 0.000 
+& 0.959 & 0.569 & \textbf{0.454} 
+& 0.954 & 0.316 & 0.047 
+& 0.931 & 0.895 & 0.741 \\
+\hline
+retain\_intersection70 ↑ 
+& 0.990 
+& 0.985 & 0.038 & 0.000 
+& 0.988 & 0.772 & \textbf{0.728} 
+& 0.988 & 0.492 & 0.187 
+& 0.978 & 0.909 & 0.354 \\
+\hline
+\multicolumn{14}{|l|}{\textbf{Popular unlearning}} \\
+\hline
+popular\_forget15 ↓ 
+& 0.999 
+& \textbf{0.499} & 0.012 & 0.000 
+& 0.997 & 0.209 & 0.183 
+& 0.942 & 0.059 & 0.012 
+& 0.986 & 0.979 & 0.818 \\
+\hline
+retain\_intersection70 ↑ 
+& 0.990 
+& \textbf{0.842} & 0.019 & 0.000 
+& 0.990 & 0.562 & 0.546 
+& 0.985 & 0.223 & 0.139 
+& 0.974 & 0.943 & 0.310 \\
+\hline
+\end{tabular}
+}
+\caption{ROUGE-L recall for 15\% rare vs.\ popular facts unlearning with varying unlearning learning rates.}
+\label{tab:popular_vs_rare_15pct}
+\end{table*}

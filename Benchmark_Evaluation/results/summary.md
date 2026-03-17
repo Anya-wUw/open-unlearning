@@ -1,0 +1,53 @@
+# Benchmark Evaluation Summary
+
+Tasks: `mmlu` (acc), `hellaswag` (acc_norm)  
+Filter: `NEW_BUGFIX_*` checkpoints with `lr=1e-4` + origin baselines
+
+| Model Name            | Benchmark | LR   | MU      | MMLU acc | HellaSwag acc_norm |
+| --------------------- | --------- | ---- | ------- | -------- | ------------------ |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | ada_pop | 0.6547   | 0.732              |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | ada_pop | 0.6517   | 0.6352             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | ada_pop | 0.6577   | 0.7476             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | ga      | 0.2295   | 0.3795             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | ga      | 0.2808   | 0.3804             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | ga      | 0.2295   | 0.3345             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | gd      | 0.6289   | 0.5447             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | gd      | 0.6483   | 0.6355             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | gd      | 0.6402   | 0.6151             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | npo     | 0.6461   | 0.7054             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | npo     | 0.6573   | 0.7255             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | npo     | 0.6557   | 0.7339             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | wga     | 0.6505   | 0.7314             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | wga     | 0.6536   | 0.7294             |
+| Llama-3.1-8B-Instruct | duet      | 1e-4 | wga     | 0.6564   | 0.7441             |
+| Llama-3.1-8B-Instruct | duet      | N/A  | origin  | 0.6507   | 0.7272             |
+| Qwen2.5-7B-Instruct   | duet      | 1e-4 | ada_pop | 0.7102   | 0.6688             |
+| Qwen2.5-7B-Instruct   | duet      | 1e-4 | ga      | 0.2356   | 0.5361             |
+| Qwen2.5-7B-Instruct   | duet      | 1e-4 | gd      | 0.7104   | 0.6331             |
+| Qwen2.5-7B-Instruct   | duet      | 1e-4 | npo     | 0.7044   | 0.6787             |
+| Qwen2.5-7B-Instruct   | duet      | 1e-4 | wga     | 0.707    | 0.6969             |
+| Qwen2.5-7B-Instruct   | duet      | N/A  | origin  | 0.7077   | 0.6801             |
+| gemma-7b-it           | duet      | 1e-4 | ada_pop | 0.5125   | 0.5489             |
+| gemma-7b-it           | duet      | 1e-4 | ga      | 0.2577   | 0.2442             |
+| gemma-7b-it           | duet      | 1e-4 | gd      | 0.4403   | 0.3024             |
+| gemma-7b-it           | duet      | 1e-4 | npo     | 0.5043   | 0.6277             |
+| gemma-7b-it           | duet      | 1e-4 | wga     | 0.5221   | 0.662              |
+| gemma-7b-it           | duet      | N/A  | origin  | 0.4736   | 0.6376             |
+| Llama-3.1-8B-Instruct | rwku      | 1e-4 | ada_pop | 0.6517   | 0.7797             |
+| Llama-3.1-8B-Instruct | rwku      | 1e-4 | ga      | 0.2296   | 0.2882             |
+| Llama-3.1-8B-Instruct | rwku      | 1e-4 | gd      | 0.6512   | 0.6351             |
+| Llama-3.1-8B-Instruct | rwku      | 1e-4 | npo     | 0.6529   | 0.7422             |
+| Llama-3.1-8B-Instruct | rwku      | 1e-4 | wga     | 0.6726   | 0.7776             |
+| Llama-3.1-8B-Instruct | rwku      | N/A  | origin  | 0.631    | 0.7252             |
+| Qwen2.5-7B-Instruct   | rwku      | 1e-4 | ada_pop | 0.7043   | 0.6879             |
+| Qwen2.5-7B-Instruct   | rwku      | 1e-4 | ga      | 0.2273   | 0.3233             |
+| Qwen2.5-7B-Instruct   | rwku      | 1e-4 | gd      | 0.7009   | 0.6601             |
+| Qwen2.5-7B-Instruct   | rwku      | 1e-4 | npo     | 0.6915   | 0.6795             |
+| Qwen2.5-7B-Instruct   | rwku      | 1e-4 | wga     | 0.7071   | 0.7003             |
+| Qwen2.5-7B-Instruct   | rwku      | N/A  | origin  | 0.6868   | 0.6539             |
+| gemma-7b-it           | rwku      | 1e-4 | ada_pop | 0.5177   | 0.6848             |
+| gemma-7b-it           | rwku      | 1e-4 | ga      | 0.2471   | 0.2689             |
+| gemma-7b-it           | rwku      | 1e-4 | gd      | 0.5046   | 0.4388             |
+| gemma-7b-it           | rwku      | 1e-4 | npo     | 0.5051   | 0.6373             |
+| gemma-7b-it           | rwku      | 1e-4 | wga     | 0.5248   | 0.6911             |
+| gemma-7b-it           | rwku      | N/A  | origin  | 0.46     | 0.6258             |
