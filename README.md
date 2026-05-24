@@ -14,7 +14,7 @@
 
 <div align="center">
   <!-- <img src="img/sq_crop_adapop.png" width="80%" alt="AdaPop overview: popularity-dependent exponent β_i and dual-ascent controller"/> -->
-  <img src="img/crop_adapop_page-0001.jpg" width="80%" alt="AdaPop overview: popularity-dependent exponent β_i and dual-ascent controller"/>
+  <img src="img/_AdaPopPaper.png" width="80%" alt="AdaPop overview: popularity-dependent exponent β_i and dual-ascent controller"/>
   <p><em>AdaPop assigns each fact a popularity-dependent exponent β<sub>i</sub> from an external Wikidata signal, applying weaker gradient pressure to rarely seen facts and stronger pressure to widely memorised ones. A dual-ascent controller adjusts the retain coefficient α automatically at each epoch, eliminating manual hyperparameter search.</em></p>
 </div>
 
